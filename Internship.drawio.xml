@@ -1,0 +1,97 @@
+<mxfile host="app.diagrams.net" agent="Codex">
+  <diagram name="Telemetry Architecture" id="telemetry-architecture">
+    <mxGraphModel dx="2357" dy="1318" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="3200" pageHeight="2200" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="gateway" parent="1" style="rounded=1;whiteSpace=wrap;html=1;align=left;verticalAlign=top;spacing=8;fontSize=12;fontColor=#000000;fillColor=#dae8fc;strokeColor=#6c8ebf;strokeWidth=2;" value="&lt;b&gt;Gateway&lt;/b&gt;&lt;br&gt;&lt;font color=&quot;#666666&quot;&gt;GSM controller&lt;/font&gt;&lt;hr&gt;id : PK&lt;br&gt;uid : UQ, immutable&lt;br&gt;title&lt;br&gt;is_active" vertex="1">
+          <mxGeometry height="135" width="210" x="808" y="1635" as="geometry" />
+        </mxCell>
+        <mxCell id="device" parent="1" style="rounded=1;whiteSpace=wrap;html=1;align=left;verticalAlign=top;spacing=8;fontSize=12;fontColor=#000000;fillColor=#dae8fc;strokeColor=#6c8ebf;strokeWidth=2;" value="&lt;b&gt;Device&lt;/b&gt;&lt;hr&gt;id : PK&lt;br&gt;gateway_id : FK&lt;br&gt;device_type_id : FK&lt;br&gt;local_id&lt;br&gt;is_active&lt;br&gt;&lt;b&gt;UQ&lt;/b&gt; (gateway_id, local_id)" vertex="1">
+          <mxGeometry height="165" width="220" x="803" y="1403" as="geometry" />
+        </mxCell>
+        <mxCell id="device-type" parent="1" style="rounded=1;whiteSpace=wrap;html=1;align=left;verticalAlign=top;spacing=8;fontSize=12;fontColor=#000000;fillColor=#dae8fc;strokeColor=#6c8ebf;strokeWidth=2;" value="&lt;b&gt;Device Type&lt;/b&gt;&lt;hr&gt;id : PK&lt;br&gt;code : UQ&lt;br&gt;title" vertex="1">
+          <mxGeometry height="120" width="200" x="1253" y="772" as="geometry" />
+        </mxCell>
+        <mxCell id="device-type-parameter" parent="1" style="rounded=1;whiteSpace=wrap;html=1;align=left;verticalAlign=top;spacing=8;fontSize=12;fontColor=#000000;fillColor=#dae8fc;strokeColor=#6c8ebf;strokeWidth=2;" value="&lt;b&gt;Device Type Parameter&lt;/b&gt;&lt;br&gt;&lt;font color=&quot;#666666&quot;&gt;Supported attribute&lt;/font&gt;&lt;hr&gt;id : PK&lt;br&gt;device_type_id : FK&lt;br&gt;parameter_id : FK&lt;br&gt;&lt;b&gt;UQ&lt;/b&gt; (device_type_id, parameter_id)" vertex="1">
+          <mxGeometry height="145" width="240" x="1380" y="978" as="geometry" />
+        </mxCell>
+        <mxCell id="parameter-definition" parent="1" style="rounded=1;whiteSpace=wrap;html=1;align=left;verticalAlign=top;spacing=8;fontSize=12;fontColor=#000000;fillColor=#dae8fc;strokeColor=#6c8ebf;strokeWidth=2;" value="&lt;b&gt;Parameter Definition&lt;/b&gt;&lt;br&gt;&lt;font color=&quot;#666666&quot;&gt;EAV attribute&lt;/font&gt;&lt;hr&gt;id : PK&lt;br&gt;code : UQ&lt;br&gt;title&lt;br&gt;value_type : int | datetime | string | bool&lt;br&gt;unit : nullable" vertex="1">
+          <mxGeometry height="165" width="230" x="1532" y="1186" as="geometry" />
+        </mxCell>
+        <mxCell id="event-type" parent="1" style="rounded=1;whiteSpace=wrap;html=1;align=left;verticalAlign=top;spacing=8;fontSize=12;fontColor=#000000;fillColor=#fff2cc;strokeColor=#d6b656;strokeWidth=2;" value="&lt;b&gt;Event Type&lt;/b&gt;&lt;hr&gt;id : PK&lt;br&gt;code : UQ&lt;br&gt;title" vertex="1">
+          <mxGeometry height="120" width="190" x="1258" y="120" as="geometry" />
+        </mxCell>
+        <mxCell id="payload-schema" parent="1" style="rounded=1;whiteSpace=wrap;html=1;align=left;verticalAlign=top;spacing=8;fontSize=12;fontColor=#000000;fillColor=#fff2cc;strokeColor=#d6b656;strokeWidth=2;" value="&lt;b&gt;Payload Schema&lt;/b&gt;&lt;hr&gt;id : PK&lt;br&gt;event_type_id : FK&lt;br&gt;device_type_id : FK&lt;br&gt;version&lt;br&gt;encoding = UTF-8&lt;br&gt;expected_length : nullable&lt;br&gt;&lt;b&gt;UQ&lt;/b&gt; (event_type, device_type, version)&lt;br&gt;immutable after use" vertex="1">
+          <mxGeometry height="205" width="250" x="1375" y="296" as="geometry" />
+        </mxCell>
+        <mxCell id="payload-field" parent="1" style="rounded=1;whiteSpace=wrap;html=1;align=left;verticalAlign=top;spacing=8;fontSize=12;fontColor=#000000;fillColor=#fff2cc;strokeColor=#d6b656;strokeWidth=2;" value="&lt;b&gt;Payload Field&lt;/b&gt;&lt;br&gt;&lt;font color=&quot;#666666&quot;&gt;Parsed substring&lt;/font&gt;&lt;hr&gt;id : PK&lt;br&gt;payload_schema_id : FK&lt;br&gt;code / name&lt;br&gt;start_byte&lt;br&gt;end_byte : exclusive&lt;br&gt;wire_codec&lt;br&gt;role : metric | timestamp | sequence | checksum&lt;br&gt;&lt;b&gt;CHECK&lt;/b&gt; end_byte &amp;gt; start_byte" vertex="1">
+          <mxGeometry height="220" width="250" x="1675" y="90" as="geometry" />
+        </mxCell>
+        <mxCell id="projection-rule" parent="1" style="rounded=1;whiteSpace=wrap;html=1;align=left;verticalAlign=top;spacing=8;fontSize=12;fontColor=#000000;fillColor=#fff2cc;strokeColor=#d6b656;strokeWidth=2;" value="&lt;b&gt;Projection Rule&lt;/b&gt;&lt;br&gt;&lt;font color=&quot;#666666&quot;&gt;Parsed field or event-implied constant&lt;/font&gt;&lt;hr&gt;id : PK&lt;br&gt;payload_schema_id : FK&lt;br&gt;parameter_id : FK&lt;br&gt;source_kind : field | constant&lt;br&gt;source_field_id : nullable FK&lt;br&gt;constant_value : nullable&lt;br&gt;conversion_config : nullable" vertex="1">
+          <mxGeometry height="205" width="230" x="2118" y="948" as="geometry" />
+        </mxCell>
+        <mxCell id="raw-event" parent="1" style="rounded=1;whiteSpace=wrap;html=1;align=left;verticalAlign=top;spacing=8;fontSize=12;fontColor=#000000;fillColor=#d5e8d4;strokeColor=#82b366;strokeWidth=2;" value="&lt;b&gt;Raw Event&lt;/b&gt;&lt;br&gt;&lt;font color=&quot;#666666&quot;&gt;Immutable source of truth&lt;/font&gt;&lt;hr&gt;id : UUID PK&lt;br&gt;gateway_id : FK&lt;br&gt;device_id : nullable FK&lt;br&gt;received_gateway_uid&lt;br&gt;received_local_id&lt;br&gt;received_schema_version&lt;br&gt;event_type_id : FK&lt;br&gt;payload_schema_id : nullable FK&lt;br&gt;raw_payload : TEXT&lt;br&gt;received_at&lt;br&gt;device_timestamp : nullable&lt;br&gt;message_id / idempotency_key : UQ&lt;br&gt;status / parsing_error" vertex="1">
+          <mxGeometry height="265" width="285" x="38" y="1778" as="geometry" />
+        </mxCell>
+        <mxCell id="parameter-reading" parent="1" style="rounded=1;whiteSpace=wrap;html=1;align=left;verticalAlign=top;spacing=8;fontSize=12;fontColor=#000000;fillColor=#d5e8d4;strokeColor=#82b366;strokeWidth=2;" value="&lt;b&gt;Parameter Reading&lt;/b&gt;&lt;br&gt;&lt;font color=&quot;#666666&quot;&gt;Append-only typed EAV value&lt;/font&gt;&lt;hr&gt;id : PK&lt;br&gt;raw_event_id : FK&lt;br&gt;device_id : FK&lt;br&gt;parameter_id : FK&lt;br&gt;projection_rule_id : nullable FK&lt;br&gt;observed_at&lt;br&gt;integer_value : nullable&lt;br&gt;datetime_value : nullable&lt;br&gt;string_value : nullable&lt;br&gt;boolean_value : nullable&lt;br&gt;&lt;b&gt;CHECK&lt;/b&gt; exactly one typed value&lt;br&gt;&lt;b&gt;INDEX&lt;/b&gt; (device, parameter, observed_at DESC)" vertex="1">
+          <mxGeometry height="245" width="310" x="2665" y="1798" as="geometry" />
+        </mxCell>
+        <mxCell id="edge-gateway-device" edge="1" parent="1" source="gateway" style="edgeStyle=none;rounded=0;html=1;startArrow=ERmandOne;endArrow=ERzeroToMany;strokeWidth=2;" target="device" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge-device-type-device" edge="1" parent="1" source="device-type" style="edgeStyle=none;rounded=0;html=1;startArrow=ERmandOne;endArrow=ERzeroToMany;strokeWidth=2;" target="device" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge-device-type-assignment" edge="1" parent="1" source="device-type" style="edgeStyle=none;rounded=0;html=1;startArrow=ERmandOne;endArrow=ERzeroToMany;strokeWidth=2;" target="device-type-parameter" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge-parameter-assignment" edge="1" parent="1" source="parameter-definition" style="edgeStyle=none;rounded=0;html=1;startArrow=ERmandOne;endArrow=ERzeroToMany;strokeWidth=2;" target="device-type-parameter" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge-event-schema" edge="1" parent="1" source="event-type" style="edgeStyle=none;rounded=0;html=1;startArrow=ERmandOne;endArrow=ERzeroToMany;strokeWidth=2;" target="payload-schema" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge-device-type-schema" edge="1" parent="1" source="device-type" style="edgeStyle=none;rounded=0;html=1;startArrow=ERmandOne;endArrow=ERzeroToMany;strokeWidth=2;" target="payload-schema" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge-schema-field" edge="1" parent="1" source="payload-schema" style="edgeStyle=none;rounded=0;html=1;startArrow=ERmandOne;endArrow=ERoneToMany;strokeWidth=2;" target="payload-field" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge-schema-rule" edge="1" parent="1" source="payload-schema" style="edgeStyle=none;rounded=0;html=1;startArrow=ERmandOne;endArrow=ERoneToMany;strokeWidth=2;" target="projection-rule" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge-field-rule" edge="1" parent="1" source="payload-field" style="edgeStyle=none;rounded=0;html=1;startArrow=ERzeroToOne;endArrow=ERzeroToMany;strokeWidth=2;" target="projection-rule" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge-parameter-rule" edge="1" parent="1" source="parameter-definition" style="edgeStyle=none;rounded=0;html=1;startArrow=ERmandOne;endArrow=ERzeroToMany;strokeWidth=2;" target="projection-rule" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge-gateway-raw" edge="1" parent="1" source="gateway" style="edgeStyle=none;rounded=0;html=1;startArrow=ERmandOne;endArrow=ERzeroToMany;strokeWidth=2;" target="raw-event" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge-device-raw" edge="1" parent="1" source="device" style="edgeStyle=none;rounded=0;html=1;startArrow=ERzeroToOne;endArrow=ERzeroToMany;strokeWidth=2;" target="raw-event" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge-event-raw" edge="1" parent="1" source="event-type" style="edgeStyle=none;rounded=0;html=1;startArrow=ERmandOne;endArrow=ERzeroToMany;strokeWidth=2;" target="raw-event" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge-schema-raw" edge="1" parent="1" source="payload-schema" style="edgeStyle=none;rounded=0;html=1;startArrow=ERzeroToOne;endArrow=ERzeroToMany;strokeWidth=2;" target="raw-event" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge-raw-reading" edge="1" parent="1" source="raw-event" style="edgeStyle=none;rounded=0;html=1;startArrow=ERmandOne;endArrow=ERzeroToMany;strokeWidth=2;" target="parameter-reading" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge-device-reading" edge="1" parent="1" source="device" style="edgeStyle=none;rounded=0;html=1;startArrow=ERmandOne;endArrow=ERzeroToMany;strokeWidth=2;" target="parameter-reading" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge-parameter-reading" edge="1" parent="1" source="parameter-definition" style="edgeStyle=none;rounded=0;html=1;startArrow=ERmandOne;endArrow=ERzeroToMany;strokeWidth=2;" target="parameter-reading" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge-rule-reading" edge="1" parent="1" source="projection-rule" style="edgeStyle=none;rounded=0;html=1;startArrow=ERzeroToOne;endArrow=ERzeroToMany;strokeWidth=2;" target="parameter-reading" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

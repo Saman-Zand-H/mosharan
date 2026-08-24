@@ -41,6 +41,8 @@ INSTALLED_APPS = [
     "django.contrib.messages",
     "django.contrib.staticfiles",
     "account.apps.AccountConfig",
+    "device.apps.DeviceConfig",
+    "event.apps.EventConfig",
 ]
 
 AUTH_USER_MODEL = "account.User"

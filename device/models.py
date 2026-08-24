@@ -5,85 +5,112 @@ from widgets.mixins.models import TimestampedMixin
 
 
 class DeviceType(TimestampedMixin):
+    code = models.CharField(max_length=64, unique=True, verbose_name=_("Code"))
+    title = models.CharField(max_length=255, verbose_name=_("Title"))
+
     class Meta:
         verbose_name = _("Device Type")
         verbose_name_plural = _("Device Types")
 
-    title = models.CharField(max_length=255, verbose_name=_("Name"))
+    def __str__(self) -> str:
+        return self.title
 
 
-class DeviceParameter(TimestampedMixin):
+class ParameterDefinition(TimestampedMixin):
+    class ValueType(models.TextChoices):
+        INTEGER = "integer", _("Integer")
+        DATETIME = "datetime", _("Datetime")
+        STRING = "string", _("String")
+        BOOLEAN = "boolean", _("Boolean")
+
+    code = models.CharField(max_length=64, unique=True, verbose_name=_("Code"))
+    title = models.CharField(max_length=255, verbose_name=_("Title"))
+    value_type = models.CharField(
+        max_length=16,
+        choices=ValueType,
+        verbose_name=_("Value Type"),
+    )
+    unit = models.CharField(
+        max_length=64,
+        blank=True,
+        null=True,
+        verbose_name=_("Unit"),
+    )
+
     class Meta:
-        verbose_name = _("Device Parameter")
-        verbose_name_plural = _("Device Parameters")
+        verbose_name = _("Parameter Definition")
+        verbose_name_plural = _("Parameter Definitions")
 
+    def __str__(self) -> str:
+        return self.title
+
+
+class DeviceTypeParameter(TimestampedMixin):
     device_type = models.ForeignKey(
         DeviceType,
-        on_delete=models.CASCADE,
+        on_delete=models.PROTECT,
+        related_name="parameter_assignments",
         verbose_name=_("Device Type"),
-        related_name="device_parameters",
     )
-    title = models.CharField(max_length=255, verbose_name=_("Title"))
-
-
-class GatewayDevice(TimestampedMixin):
-    class Meta:
-        verbose_name = _("Owner Device")
-        verbose_name_plural = _("Owner Devices")
-
-    uid = models.CharField(
-        max_length=12,
-        verbose_name=_("UID"),
-        unique=True,
-        primary_key=True,
+    parameter = models.ForeignKey(
+        ParameterDefinition,
+        on_delete=models.PROTECT,
+        related_name="device_type_assignments",
+        verbose_name=_("Parameter"),
     )
-    title = models.CharField(max_length=255, verbose_name=_("Title"))
 
-
-class Device(TimestampedMixin):
     class Meta:
-        verbose_name = _("Device")
-        verbose_name_plural = _("Devices")
-
+        verbose_name = _("Device Type Parameter")
+        verbose_name_plural = _("Device Type Parameters")
         constraints = [
             models.UniqueConstraint(
-                fields=[
-                    "local_id",
-                    "owner",
-                ],  # device local id and the owner device uid (pk) are unique together
-                name="unique_device_local_id_and_owner",
+                fields=("device_type", "parameter"),
+                name="uniq_device_type_parameter",
             )
         ]
 
-    local_id = models.CharField(max_length=1, verbose_name=_("Local ID"))
+    def __str__(self) -> str:
+        return f"{self.device_type} / {self.parameter}"
+
+
+class Gateway(TimestampedMixin):
+    uid = models.CharField(max_length=64, unique=True, verbose_name=_("UID"))
+    title = models.CharField(max_length=255, verbose_name=_("Title"))
+    is_active = models.BooleanField(default=True, verbose_name=_("Is Active"))
+
+    class Meta:
+        verbose_name = _("Gateway")
+        verbose_name_plural = _("Gateways")
+
+    def __str__(self) -> str:
+        return self.title
+
+
+class Device(TimestampedMixin):
+    gateway = models.ForeignKey(
+        Gateway,
+        on_delete=models.PROTECT,
+        related_name="devices",
+        verbose_name=_("Gateway"),
+    )
     device_type = models.ForeignKey(
         DeviceType,
-        on_delete=models.CASCADE,
+        on_delete=models.PROTECT,
+        related_name="devices",
         verbose_name=_("Device Type"),
-        related_name="devices",
     )
-    gateway = models.ForeignKey(
-        GatewayDevice,
-        on_delete=models.CASCADE,
-        verbose_name=_("Device Owner"),
-        related_name="devices",
-    )
+    local_id = models.CharField(max_length=64, verbose_name=_("Local ID"))
+    is_active = models.BooleanField(default=True, verbose_name=_("Is Active"))
 
-
-class DeviceParameterValue(TimestampedMixin):
     class Meta:
-        verbose_name = _("Device Parameter Value")
-        verbose_name_plural = _("Device Parameter Values")
+        verbose_name = _("Device")
+        verbose_name_plural = _("Devices")
+        constraints = [
+            models.UniqueConstraint(
+                fields=("gateway", "local_id"),
+                name="uniq_gateway_local_device",
+            )
+        ]
 
-    device = models.ForeignKey(
-        Device,
-        on_delete=models.CASCADE,
-        verbose_name=_("Device"),
-        related_name="device_parameter_values",
-    )
-    device_parameter = models.ForeignKey(
-        DeviceParameter,
-        on_delete=models.CASCADE,
-        related_name="device_parameter_values",
-        verbose_name=_("Device Parameter"),
-    )
+    def __str__(self) -> str:
+        return f"{self.gateway.uid}:{self.local_id}"

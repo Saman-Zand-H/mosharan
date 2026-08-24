@@ -1,7 +1,7 @@
-# Device Events API
+# Device Telemetry Backend
 
-Minimal Django and Django Ninja backend for receiving microcontroller events.
-The current endpoint accepts any JSON object and returns the same object.
+Django backend for registering microcontroller installations and retaining raw
+telemetry plus typed parameter history.
 
 ## Run locally
 
@@ -33,21 +33,43 @@ endpoints exist yet.
 
 Set `DJANGO_SECRET_KEY` before running outside local development.
 
-## Echo an event
+## Architecture
 
-```bash
-curl --request POST http://127.0.0.1:8000/api/events/echo \
-  --header 'Content-Type: application/json' \
-  --data '{"type":"temperature","device_id":"sensor-01","value":24.5}'
+- `device`: gateways, devices, device types, and parameter catalog
+- `event`: event types, versioned byte-layout schemas, immutable raw events, and
+  typed EAV parameter readings
+- `account`: custom Django user model
+
+See [ADR-001](docs/decisions/0001-immutable-events-and-typed-eav.md) for data
+model rationale and [CONTEXT.md](CONTEXT.md) for domain language.
+
+## Ingestion service
+
+Use the transport-independent service after authenticating the gateway:
+
+```python
+from event.services import IngestionRequest, ingest_event
+
+result = ingest_event(
+    IngestionRequest(
+        gateway_uid="gateway-001",
+        device_local_id="sensor-1",
+        event_type_code="metrics",
+        schema_version=1,
+        message_id="message-123",
+        payload="17200000000251",
+    )
+)
 ```
 
-Response:
+The service stores raw input before parsing, prevents conflicting message-ID
+reuse, returns existing readings for processed retries, and retains failed raw
+events for later reprocessing. Payloads are limited to 64 KiB. Boolean fields
+accept `0`, `1`, `false`, or `true`; datetime rules use Unix seconds unless
+`conversion_config` sets `timestamp_unit` to `milliseconds`.
 
-```json
-{"type": "temperature", "device_id": "sensor-01", "value": 24.5}
-```
+See [ADR-002](docs/decisions/0002-raw-first-ingestion-service.md) for transaction
+and retry behavior.
 
-Interactive API documentation: <http://127.0.0.1:8000/api/docs>
-
-This prototype endpoint has no authentication. Do not expose it publicly before
-adding device authentication, request limits, and a production secret key.
+HTTP ingestion endpoints and gateway authentication are not implemented yet.
+Do not expose this project as a receiver before adding them.
