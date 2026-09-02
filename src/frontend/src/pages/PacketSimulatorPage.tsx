@@ -1,0 +1,382 @@
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import {
+  Database,
+  FlaskConical,
+  RadioTower,
+  RefreshCw,
+  TriangleAlert,
+} from 'lucide-react'
+
+import { DecodedPacketPanel } from '../features/packet-simulator/DecodedPacketPanel'
+import { IngestionPipeline } from '../features/packet-simulator/IngestionPipeline'
+import { PacketByteMap } from '../features/packet-simulator/PacketByteMap'
+import { PacketComposer } from '../features/packet-simulator/PacketComposer'
+import { parsePayload } from '../features/packet-simulator/packetProtocol'
+import {
+  createCurrentTimestampDraft,
+  createFieldDrafts,
+  generatePayload,
+  type FieldDrafts,
+  type GapByte,
+} from '../features/packet-simulator/payloadGenerator'
+import {
+  loadSimulatorCatalog,
+  type CatalogDevice,
+  type CatalogPayloadSchema,
+  type SimulatorCatalog,
+} from '../features/packet-simulator/schemaCatalog'
+import { SchemaSourceNotice } from '../features/packet-simulator/SchemaSourceNotice'
+import { SessionStats } from '../features/packet-simulator/SessionStats'
+import { SimulationHistory } from '../features/packet-simulator/SimulationHistory'
+import type {
+  SimulationPhase,
+  SimulationReceipt,
+} from '../features/packet-simulator/simulatorTypes'
+
+const pause = (milliseconds: number) =>
+  new Promise((resolve) => window.setTimeout(resolve, milliseconds))
+const receivedAtFormatter = new Intl.DateTimeFormat('fa-IR', {
+  hour: '2-digit',
+  minute: '2-digit',
+  second: '2-digit',
+})
+const isReceivableDevice = (device: CatalogDevice) =>
+  device.isActive && device.gateway.isActive
+
+export function PacketSimulatorPage() {
+  const [catalog, setCatalog] = useState<SimulatorCatalog>()
+  const [catalogError, setCatalogError] = useState<string>()
+  const [schemaId, setSchemaId] = useState('')
+  const [deviceId, setDeviceId] = useState('')
+  const [drafts, setDrafts] = useState<FieldDrafts>({})
+  const [gapByte, setGapByte] = useState<GapByte>(0x20)
+  const [phase, setPhase] = useState<SimulationPhase>('idle')
+  const [failureMessage, setFailureMessage] = useState<string>()
+  const [receipts, setReceipts] = useState<SimulationReceipt[]>([])
+  const [activeReceipt, setActiveReceipt] = useState<SimulationReceipt>()
+  const [busy, setBusy] = useState(false)
+  const [streaming, setStreaming] = useState(false)
+  const [catalogLoadAttempt, setCatalogLoadAttempt] = useState(0)
+  const busyRef = useRef(false)
+  const runRef = useRef(0)
+  const sequenceRef = useRef(0)
+
+  useEffect(() => {
+    const controller = new AbortController()
+    void loadSimulatorCatalog({ signal: controller.signal })
+      .then((loadedCatalog) => {
+        const firstSchema = loadedCatalog.schemas[0]
+        setCatalog(loadedCatalog)
+        if (firstSchema) {
+          const firstDevice = loadedCatalog.devices.find(
+            (device) =>
+              isReceivableDevice(device) &&
+              device.deviceTypeCode === firstSchema.deviceType.code,
+          )
+          setSchemaId(firstSchema.id)
+          setDeviceId(firstDevice?.id ?? '')
+          setDrafts(createFieldDrafts(firstSchema))
+        } else {
+          setSchemaId('')
+          setDeviceId('')
+          setDrafts({})
+        }
+      })
+      .catch((error) => {
+        if (error instanceof DOMException && error.name === 'AbortError') return
+        setCatalogError(
+          error instanceof Error
+            ? error.message
+            : 'بارگذاری schemaهای پایگاه داده ناموفق بود.',
+        )
+      })
+    return () => {
+      controller.abort()
+      runRef.current += 1
+      busyRef.current = false
+    }
+  }, [catalogLoadAttempt])
+
+  const selectedSchema = catalog?.schemas.find((schema) => schema.id === schemaId)
+  const compatibleDevices = useMemo(
+    () => catalog?.devices.filter(
+      (device) =>
+        isReceivableDevice(device) &&
+        device.deviceTypeCode === selectedSchema?.deviceType.code,
+    ) ?? [],
+    [catalog, selectedSchema],
+  )
+  const selectedDevice = compatibleDevices.find((device) => device.id === deviceId)
+  const generation = useMemo(
+    () => selectedSchema
+      ? generatePayload(selectedSchema, drafts, { gapByte })
+      : { ok: false as const, issues: [] },
+    [drafts, gapByte, selectedSchema],
+  )
+  const preview = useMemo(
+    () => selectedSchema && generation.ok
+      ? parsePayload(selectedSchema, generation.payload)
+      : undefined,
+    [generation, selectedSchema],
+  )
+
+  const simulateReceive = useCallback(async (
+    schema: CatalogPayloadSchema,
+    device: CatalogDevice,
+    payload: string,
+  ) => {
+    if (busyRef.current) return
+    busyRef.current = true
+    setBusy(true)
+    const run = ++runRef.current
+    const startedAt = performance.now()
+    const parsed = parsePayload(schema, payload)
+
+    setFailureMessage(undefined)
+    setPhase('receiving')
+    await pause(170)
+    if (run !== runRef.current) return
+    setPhase('stored')
+    await pause(190)
+    if (run !== runRef.current) return
+    setPhase('parsing')
+    await pause(230)
+    if (run !== runRef.current) return
+
+    const sequence = ++sequenceRef.current
+    const payloadBytes = new TextEncoder().encode(payload)
+    const baseReceipt = {
+      id: `receipt-${sequence}`,
+      rawEventId: `RAW-DEMO-${String(sequence).padStart(4, '0')}`,
+      schemaId: schema.id,
+      schemaVersion: schema.version,
+      eventTitle: schema.eventType.title,
+      deviceTypeTitle: schema.deviceType.title,
+      envelope: {
+        gatewayUid: device.gateway.uid,
+        deviceLocalId: device.localId,
+        eventTypeCode: schema.eventType.code,
+        schemaVersion: schema.version,
+        messageId: `demo-${Date.now()}-${sequence}`,
+      },
+      receivedAt: receivedAtFormatter.format(new Date()),
+      byteLength: payloadBytes.length,
+      payload,
+      payloadHex: [...payloadBytes]
+        .map((byte) => byte.toString(16).padStart(2, '0').toUpperCase())
+        .join(' '),
+    }
+
+    if (!parsed.ok) {
+      const receipt: SimulationReceipt = {
+        ...baseReceipt,
+        status: 'failed',
+        error: parsed.error,
+        latencyMs: Math.round(performance.now() - startedAt),
+      }
+      setFailureMessage(parsed.error)
+      setPhase('failed')
+      setActiveReceipt(receipt)
+      setReceipts((current) => [receipt, ...current].slice(0, 8))
+      busyRef.current = false
+      setBusy(false)
+      return
+    }
+
+    setPhase('projecting')
+    await pause(240)
+    if (run !== runRef.current) return
+    const receipt: SimulationReceipt = {
+      ...baseReceipt,
+      status: 'processed',
+      latencyMs: Math.round(performance.now() - startedAt),
+      fields: parsed.parsed.fields,
+      readings: parsed.parsed.readings,
+      deviceTimestamp: parsed.parsed.deviceTimestamp,
+    }
+    setPhase('processed')
+    setActiveReceipt(receipt)
+    setReceipts((current) => [receipt, ...current].slice(0, 8))
+    busyRef.current = false
+    setBusy(false)
+  }, [])
+
+  useEffect(() => {
+    if (
+      !streaming ||
+      !selectedSchema ||
+      !selectedDevice ||
+      !generation.ok
+    ) return
+    const send = () => {
+      if (!busyRef.current) {
+        void simulateReceive(selectedSchema, selectedDevice, generation.payload)
+      }
+    }
+    send()
+    const timer = window.setInterval(send, 1_650)
+    return () => window.clearInterval(timer)
+  }, [generation, selectedDevice, selectedSchema, simulateReceive, streaming])
+
+  const selectSchema = (id: string) => {
+    const schema = catalog?.schemas.find((item) => item.id === id)
+    if (!schema) return
+    const device = catalog?.devices.find(
+      (item) =>
+        isReceivableDevice(item) &&
+        item.deviceTypeCode === schema.deviceType.code,
+    )
+    setSchemaId(schema.id)
+    setDeviceId(device?.id ?? '')
+    setDrafts(createFieldDrafts(schema))
+    setPhase('idle')
+    setFailureMessage(undefined)
+  }
+  const clearSession = () => {
+    setStreaming(false)
+    runRef.current += 1
+    busyRef.current = false
+    setBusy(false)
+    setPhase('idle')
+    setFailureMessage(undefined)
+    setReceipts([])
+    setActiveReceipt(undefined)
+    sequenceRef.current = 0
+  }
+  const selectReceipt = (receipt: SimulationReceipt) => {
+    const schema = catalog?.schemas.find((item) => item.id === receipt.schemaId)
+    const device = catalog?.devices.find(
+      (item) =>
+        item.gateway.uid === receipt.envelope.gatewayUid &&
+        item.localId === receipt.envelope.deviceLocalId,
+    )
+    if (schema) {
+      setSchemaId(schema.id)
+      const extracted = Object.fromEntries(
+        receipt.fields?.map((field) => [field.id, field.rawText]) ?? [],
+      )
+      setDrafts(
+        Object.keys(extracted).length ? extracted : createFieldDrafts(schema),
+      )
+    }
+    setDeviceId(device?.id ?? '')
+    setActiveReceipt(receipt)
+    setFailureMessage(receipt.error)
+    setPhase(receipt.status === 'processed' ? 'processed' : 'failed')
+  }
+
+  if (catalogError) {
+    return (
+      <div className="simulator-load-state" role="alert">
+        <TriangleAlert size={26} aria-hidden="true" />
+        <h1>شبیه‌ساز در دسترس نیست</h1>
+        <p>{catalogError}</p>
+        <button
+          className="button button--secondary"
+          type="button"
+          onClick={() => {
+            setCatalogError(undefined)
+            setCatalogLoadAttempt((attempt) => attempt + 1)
+          }}
+        >
+          <RefreshCw size={16} aria-hidden="true" />
+          تلاش دوباره
+        </button>
+      </div>
+    )
+  }
+  if (!catalog) {
+    return <div className="simulator-load-state" aria-busy="true"><Database size={26} aria-hidden="true" /><h1>در حال بارگذاری schemaها…</h1></div>
+  }
+  if (!catalog.schemas.length || !selectedSchema) {
+    return <div className="simulator-load-state"><Database size={26} aria-hidden="true" /><h1>schema قابل نمایش نیست</h1><p>برای این حساب هنوز PayloadSchema قابل دسترسی وجود ندارد.</p></div>
+  }
+
+  return (
+    <div className="packet-simulator-page">
+      <header className="simulator-page-header">
+        <div>
+          <div className="eyebrow-row">
+            <span className="eyebrow">آزمایشگاه پروتکل</span>
+            <span className="demo-label"><FlaskConical size={13} aria-hidden="true" />شبیه‌سازی محلی</span>
+          </div>
+          <h1>مولد و شبیه‌ساز payload</h1>
+          <p>برای هر schema پایگاه داده، فیلدها را پر کنید و payload دقیق UTF-8 بسازید.</p>
+        </div>
+        <span className="simulator-source"><Database size={16} aria-hidden="true" />منبع: API پایگاه داده</span>
+      </header>
+
+      <SchemaSourceNotice />
+      <SessionStats receipts={receipts} streaming={streaming} />
+
+      <section className="simulator-device-selector" aria-labelledby="simulator-device-title">
+        <span><RadioTower size={17} aria-hidden="true" /></span>
+        <div><strong id="simulator-device-title">envelope دستگاه</strong><small>فقط دستگاه‌ها و درگاه‌های فعال با Device Type همین schema نشان داده می‌شوند.</small></div>
+        <select
+          aria-label="دستگاه دریافت‌کننده"
+          value={deviceId}
+          disabled={busy || streaming || !compatibleDevices.length}
+          onChange={(event) => setDeviceId(event.target.value)}
+        >
+          {!compatibleDevices.length ? <option value="">دستگاه سازگار وجود ندارد</option> : null}
+          {compatibleDevices.map((device) => (
+            <option key={device.id} value={device.id}>
+              {device.gateway.title} · {device.localId}
+            </option>
+          ))}
+        </select>
+      </section>
+
+      <div className="simulator-workbench">
+        <PacketComposer
+          schemas={catalog.schemas}
+          schemaId={schemaId}
+          drafts={drafts}
+          generation={generation}
+          gapByte={gapByte}
+          busy={busy}
+          streaming={streaming}
+          canReceive={Boolean(selectedDevice)}
+          onDraftChange={(fieldId, value) => setDrafts((current) => ({ ...current, [fieldId]: value }))}
+          onFillTimestamp={(fieldId) => {
+            const current = createCurrentTimestampDraft(selectedSchema, fieldId)
+            setDrafts((values) => ({ ...values, [fieldId]: current.value }))
+          }}
+          onGapByteChange={setGapByte}
+          onReceive={() => {
+            if (generation.ok && selectedDevice) {
+              void simulateReceive(selectedSchema, selectedDevice, generation.payload)
+            }
+          }}
+          onReset={() => setDrafts(createFieldDrafts(selectedSchema))}
+          onSchemaChange={selectSchema}
+          onToggleStream={() => setStreaming((current) => !current)}
+        />
+        <PacketByteMap
+          key={selectedSchema.id}
+          generation={generation}
+          schema={selectedSchema}
+          decodedFields={preview?.ok ? preview.parsed.fields : undefined}
+        />
+      </div>
+
+      {!selectedDevice ? (
+        <p className="simulator-device-warning" role="status">
+          payload تولید می‌شود، اما برای اجرای دریافت باید یک Device سازگار با schema ثبت و قابل دسترس باشد.
+        </p>
+      ) : null}
+      <IngestionPipeline phase={phase} failureMessage={failureMessage} />
+
+      <div className="simulator-results">
+        <DecodedPacketPanel receipt={activeReceipt} />
+        <SimulationHistory
+          activeReceiptId={activeReceipt?.id}
+          selectionDisabled={busy || streaming}
+          receipts={receipts}
+          onClear={clearSession}
+          onSelect={selectReceipt}
+        />
+      </div>
+    </div>
+  )
+}

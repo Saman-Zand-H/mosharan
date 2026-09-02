@@ -5,9 +5,18 @@ parameters collected from microcontroller installations.
 
 ## Language
 
+**Company**:
+An organization represented by one User that may own multiple Gateways.
+_Avoid_: Tenant, customer account
+
+**Platform Administrator**:
+The operator User with global access across all Companies and unassigned
+Gateways.
+_Avoid_: Company admin, staff user
+
 **Gateway**:
 The GSM-enabled controller that identifies one installation and relays events
-from its devices.
+from its devices. A Gateway may belong to one Company or remain unassigned.
 _Avoid_: Device owner, owner device, gateway device
 
 **Device**:
@@ -43,6 +52,18 @@ of parsing outcome.
 One typed, historical observation of a Parameter for a Device, derived from one
 Raw Event.
 _Avoid_: Parameter value
+
+**Visualization Tab**:
+An ordered dashboard group scoped to one Device Type. It groups related
+Visualizations, such as multiple voltage channels.
+
+**Visualization**:
+A database-defined chart with a title, chart type, optional Parameter X axis,
+and Parameter Y axis. A missing X axis means the reading observation time.
+
+**Binary Status**:
+The latest boolean Parameter Reading for a Device plus its chronological history.
+The dashboard represents the latest state with a green True or red False tile.
 
 **Ingestion**:
 Acceptance of one Gateway event, preserving its Raw Event and deriving any

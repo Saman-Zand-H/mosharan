@@ -1,0 +1,7 @@
+- [x] Add visualization tab/chart models and migration.
+- [x] Add model validation and management CRUD/snapshot DTOs.
+- [x] Add tenant-scoped dashboard endpoint with chart and binary data.
+- [x] Extend demo seed with tabs, charts, and binary history.
+- [x] Replace overview mock dashboard with API-backed UI.
+- [x] Add visualization/tab management controls.
+- [x] Run checks and runtime smoke tests.
