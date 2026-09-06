@@ -116,7 +116,7 @@ WSGI_APPLICATION = "config.wsgi.application"
 DATABASES = {
     "default": {
         "ENGINE": "django.db.backends.sqlite3",
-        "NAME": BASE_DIR / "db.sqlite3",
+        "NAME": Path(os.getenv("DJANGO_DB_PATH", str(BASE_DIR / "db.sqlite3"))),
     }
 }
 
@@ -163,6 +163,7 @@ USE_TZ = True
 # https://docs.djangoproject.com/en/5.2/howto/static-files/
 
 STATIC_URL = "static/"
+STATIC_ROOT = BASE_DIR / "staticfiles"
 
 
 # Production transport security. Local development keeps plain HTTP available;
@@ -179,6 +180,12 @@ SECURE_HSTS_INCLUDE_SUBDOMAINS = env_flag(
     default=False,
 )
 SECURE_HSTS_PRELOAD = env_flag("DJANGO_SECURE_HSTS_PRELOAD", default=False)
+
+# Enable only behind a trusted proxy that overwrites X-Forwarded-Proto.
+if env_flag("DJANGO_TRUST_PROXY_HEADERS", default=False):
+    SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
+
+SECURE_REDIRECT_EXEMPT = [r"^healthz$"]
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/5.2/ref/settings/#default-auto-field

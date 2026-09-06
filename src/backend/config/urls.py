@@ -19,8 +19,10 @@ from django.urls import path
 
 from .admin import platform_admin_site
 from .api import api
+from .health import health
 
 urlpatterns = [
+    path("healthz", health),
     path("admin/", platform_admin_site.urls),
     path("api/v1/", api.urls),
 ]

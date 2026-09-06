@@ -1,0 +1,14 @@
+**/.git
+**/.venv
+**/node_modules
+**/dist
+**/__pycache__
+**/*.py[cod]
+**/.ruff_cache
+**/.env*
+**/*.sqlite3*
+**/staticfiles
+**/*.tsbuildinfo
+data
+deploy/*.pem
+deploy/*.key

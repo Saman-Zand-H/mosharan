@@ -13,6 +13,10 @@ src/
 Shared domain language lives in [CONTEXT.md](CONTEXT.md). The data model lives in
 [Internship.drawio.xml](Internship.drawio.xml).
 
+Production deployment uses [Docker Compose](deploy/README.md): a Gunicorn backend
+image, an Nginx frontend image, and a persistent SQLite volume behind the host's
+HTTPS reverse proxy.
+
 Companies are one-to-one with their regular users and may own multiple
 gateways. Gateway ownership is optional; unassigned gateways are visible only to
 platform superusers. Device and telemetry access is derived through the gateway
