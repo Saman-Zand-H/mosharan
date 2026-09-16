@@ -1,3 +1,4 @@
+from django.contrib.auth.hashers import check_password, make_password
 from django.db import models
 from django.utils.translation import gettext_lazy as _
 
@@ -94,6 +95,13 @@ class Gateway(TimestampedMixin):
     uid = models.CharField(max_length=64, unique=True, verbose_name=_("UID"))
     title = models.CharField(max_length=255, verbose_name=_("Title"))
     is_active = models.BooleanField(default=True, verbose_name=_("Is Active"))
+    ingest_token_hash = models.CharField(
+        max_length=128,
+        blank=True,
+        default="",
+        editable=False,
+        verbose_name=_("Ingest Token Hash"),
+    )
 
     objects = GatewayQuerySet.as_manager()
 
@@ -103,6 +111,19 @@ class Gateway(TimestampedMixin):
 
     def __str__(self) -> str:
         return self.title
+
+    @property
+    def ingest_token_configured(self) -> bool:
+        return bool(self.ingest_token_hash)
+
+    def set_ingest_token(self, token: str) -> None:
+        self.ingest_token_hash = make_password(token)
+
+    def check_ingest_token(self, token: str) -> bool:
+        return bool(self.ingest_token_hash) and check_password(
+            token,
+            self.ingest_token_hash,
+        )
 
 
 class Device(TimestampedMixin):

@@ -63,6 +63,8 @@ when no field-level details exist.
 - `/api/v1/auth/*`: CSRF bootstrap, login, logout, and current-session identity
 - `/api/v1/management/*`: superuser-only CRUD for registry and payload
   configuration
+- `POST /api/v1/management/gateways/{id}/ingest-token`: issue or rotate one
+  Gateway bearer token; the plaintext value is returned once
 - `/api/v1/management/visualization-tabs` and
   `/api/v1/management/visualizations`: superuser-only dashboard configuration
 - `/api/v1/simulator/catalog`: superuser-only database-defined devices and
@@ -119,6 +121,44 @@ events for later reprocessing. Payloads are limited to 64 KiB. Boolean fields
 accept `0`, `1`, `false`, or `true`; datetime rules use Unix seconds unless
 `conversion_config` sets `timestamp_unit` to `milliseconds`.
 
+## Hardware HTTP ingestion
+
+Hardware sends one JSON envelope to `POST /api/v1/ingest`. The gateway must be
+active and provisioned with a token by a platform administrator. Send the token
+as `Authorization: Bearer <gateway-token>` and identify the gateway with
+`X-Gateway-UID`. The body is:
+
+```json
+{
+  "deviceLocalId": "sensor-001",
+  "eventTypeCode": "telemetry",
+  "schemaVersion": 1,
+  "messageId": "device-001-sequence-123",
+  "payload": "<exact UTF-8 payload>"
+}
+```
+
+Example request (replace the token with the one returned by the admin rotation
+action):
+
+```bash
+curl -X POST http://127.0.0.1:8765/api/v1/ingest \
+  -H 'Authorization: Bearer <gateway-token>' \
+  -H 'X-Gateway-UID: DEMO-GW-001' \
+  -H 'Content-Type: application/json' \
+  --data '{"deviceLocalId":"sensor-001","eventTypeCode":"telemetry","schemaVersion":1,"messageId":"device-001-sequence-123","payload":"1724937600002500641 "}'
+```
+
+The endpoint resolves `eventTypeCode`, `deviceLocalId`, and `schemaVersion` to
+the database `PayloadSchema`, then uses its `PayloadField` and
+`ProjectionRule` rows through the same raw-first ingestion service. A new
+processed event returns `201`; an identical retry returns `200` with the same
+reading IDs; a reused message ID with different envelope data returns `409`.
+Malformed or schema-invalid payloads return `422` and retain a failed
+`RawEvent`. Use HTTPS in any non-local deployment. Generate or rotate a gateway
+token from **Platform management → Gateways → issue token**; the plaintext token
+is returned only once.
+
 See [ADR-002](docs/decisions/0002-raw-first-ingestion-service.md) for transaction
 and retry behavior.
 
@@ -168,6 +208,3 @@ temperature and humidity points. Binary fixture values are derived from the
 absolute device hour, so rerunning after the window advances does not create an
 idempotency conflict. Re-running the command fills only missing hour/device
 message IDs and does not duplicate existing readings.
-
-HTTP ingestion endpoints and gateway authentication are not implemented yet.
-Do not expose this project as a receiver before adding them.

@@ -48,7 +48,8 @@ see or assign an unowned Gateway.
 
 - Deleting a Company or its User is protected while ownership references exist.
 - Hardware ingestion remains independent of Company-user authorization and can
-  accept both assigned and unassigned Gateways.
+  accept both assigned and unassigned Gateways through the gateway-token
+  authenticated `POST /api/v1/ingest` endpoint.
 - Reassigning a Gateway changes visibility of its complete historical telemetry.
   The management API permits assigning an unassigned Gateway, but rejects
   changing or clearing an existing Company with `gateway_transfer_blocked`

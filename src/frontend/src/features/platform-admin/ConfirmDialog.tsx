@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react'
-import { AlertTriangle, KeyRound, Trash2, X } from 'lucide-react'
+import { AlertTriangle, Check, Copy, KeyRound, Trash2, X } from 'lucide-react'
 
 export function DeleteConfirmDialog({
   title,
@@ -109,6 +109,73 @@ export function PasswordDialog({
           <button className="admin-button admin-button--primary" type="submit" disabled={busy}>{busy ? 'در حال ذخیره…' : 'تغییر گذرواژه'}</button>
         </footer>
       </form>
+    </dialog>
+  )
+}
+
+export function GatewayTokenDialog({
+  gatewayUid,
+  token,
+  busy,
+  error,
+  onClose,
+}: {
+  gatewayUid: string
+  token: string | null
+  busy: boolean
+  error: string | null
+  onClose: () => void
+}) {
+  const dialogRef = useRef<HTMLDialogElement>(null)
+  const [copied, setCopied] = useState(false)
+  useEffect(() => {
+    dialogRef.current?.showModal()
+  }, [])
+
+  const copyToken = async () => {
+    if (!token || !navigator.clipboard) return
+    try {
+      await navigator.clipboard.writeText(token)
+      setCopied(true)
+      window.setTimeout(() => setCopied(false), 2200)
+    } catch {
+      setCopied(false)
+    }
+  }
+
+  return (
+    <dialog
+      ref={dialogRef}
+      className="admin-confirm gateway-token-dialog"
+      aria-labelledby="gateway-token-title"
+      onCancel={(event) => {
+        event.preventDefault()
+        if (!busy) onClose()
+      }}
+    >
+      <span className="admin-confirm__icon"><KeyRound size={23} aria-hidden="true" /></span>
+      <button className="admin-confirm__close" type="button" aria-label="بستن" disabled={busy} onClick={onClose}>
+        <X size={18} aria-hidden="true" />
+      </button>
+      <p className="eyebrow">احراز هویت سخت‌افزار</p>
+      <h2 id="gateway-token-title">توکن دریافت {gatewayUid}</h2>
+      {busy ? (
+        <p>توکن امن در حال ساخت است…</p>
+      ) : error ? (
+        <div className="admin-form-error" role="alert">{error}</div>
+      ) : token ? (
+        <>
+          <p>این توکن فقط همین‌بار نمایش داده می‌شود. صدور دوباره، توکن قبلی را باطل می‌کند؛ آن را در تنظیمات امن Gateway ذخیره کنید.</p>
+          <code className="gateway-token-value" dir="ltr">{token}</code>
+          <button className="admin-button admin-button--secondary gateway-token-copy" type="button" onClick={() => void copyToken()}>
+            {copied ? <Check size={15} aria-hidden="true" /> : <Copy size={15} aria-hidden="true" />}
+            {copied ? 'کپی شد' : 'کپی توکن'}
+          </button>
+        </>
+      ) : null}
+      <footer>
+        <button className="admin-button admin-button--ghost" type="button" disabled={busy} onClick={onClose}>بستن</button>
+      </footer>
     </dialog>
   )
 }

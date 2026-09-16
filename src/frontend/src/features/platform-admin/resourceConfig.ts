@@ -92,7 +92,7 @@ export const resourceDefinitions: Record<
     id: 'gateways',
     label: 'درگاه‌ها',
     singular: 'درگاه',
-    description: 'کنترلرهای GSM، مالکیت شرکتی و وضعیت رجیستری.',
+    description: 'کنترلرهای GSM، مالکیت شرکتی، وضعیت رجیستری و توکن دریافت.',
     icon: RadioTower,
     columns: ['درگاه', 'شرکت', 'وضعیت'],
   },

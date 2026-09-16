@@ -16,6 +16,7 @@ interface ResourceTableProps {
   onEdit: (record: ManagementRecord) => void
   onDelete: (record: ManagementRecord) => void
   onPassword: (record: ManagementRecord) => void
+  onToken: (record: ManagementRecord) => void
 }
 
 export function ResourceTable({
@@ -25,6 +26,7 @@ export function ResourceTable({
   onEdit,
   onDelete,
   onPassword,
+  onToken,
 }: ResourceTableProps) {
   const definition = resourceDefinitions[resource]
 
@@ -46,6 +48,16 @@ export function ResourceTable({
 
     return (
       <div className="admin-row-actions">
+        {resource === 'gateways' ? (
+          <button
+            type="button"
+            aria-label={`صدور توکن دریافت ${getRecordTitle(resource, record, snapshot)}`}
+            title="صدور یا چرخش توکن دریافت"
+            onClick={() => onToken(record)}
+          >
+            <KeyRound size={15} aria-hidden="true" />
+          </button>
+        ) : null}
         {resource === 'users' ? (
           <button type="button" aria-label={`تغییر گذرواژهٔ ${getRecordTitle(resource, record, snapshot)}`} onClick={() => onPassword(record)}>
             <KeyRound size={15} aria-hidden="true" />

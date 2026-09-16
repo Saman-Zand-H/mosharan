@@ -15,15 +15,21 @@ import {
   createManagementRecord,
   deleteManagementRecord,
   getManagementSnapshot,
+  rotateGatewayIngestToken,
   updateManagementRecord,
 } from './managementApi'
 import type {
+  GatewayRecord,
   ManagementPayload,
   ManagementRecord,
   ManagementResource,
   ManagementSnapshot,
 } from './managementTypes'
-import { DeleteConfirmDialog, PasswordDialog } from './ConfirmDialog'
+import {
+  DeleteConfirmDialog,
+  GatewayTokenDialog,
+  PasswordDialog,
+} from './ConfirmDialog'
 import { RecordFormDialog } from './RecordFormDialog'
 import { ResourceTable } from './ResourceTable'
 import { getRecordSearchText, getRecordTitle } from './recordPresentation'
@@ -70,6 +76,10 @@ export function AdminWorkspace() {
   const [mutationError, setMutationError] = useState<string | null>(null)
   const [fieldErrors, setFieldErrors] = useState<Record<string, string[]>>({})
   const [notice, setNotice] = useState<string | null>(null)
+  const [tokenGateway, setTokenGateway] = useState<GatewayRecord | null>(null)
+  const [tokenValue, setTokenValue] = useState<string | null>(null)
+  const [tokenBusy, setTokenBusy] = useState(false)
+  const [tokenError, setTokenError] = useState<string | null>(null)
 
   const load = useCallback(async (signal?: AbortSignal) => {
     setLoadError(null)
@@ -187,6 +197,34 @@ export function AdminWorkspace() {
     }
   }
 
+  const issueGatewayToken = async (record: ManagementRecord) => {
+    if (activeResource !== 'gateways') return
+    const gateway = record as GatewayRecord
+    if (
+      gateway.ingestTokenConfigured &&
+      !window.confirm(
+        'توکن فعلی این درگاه باطل می‌شود. برای صدور توکن جدید ادامه می‌دهید؟',
+      )
+    ) {
+      return
+    }
+    setTokenGateway(gateway)
+    setTokenValue(null)
+    setTokenError(null)
+    setTokenBusy(true)
+    try {
+      const result = await rotateGatewayIngestToken(gateway.id)
+      setTokenValue(result.token)
+      await load()
+    } catch (error) {
+      setTokenError(
+        error instanceof Error ? error.message : 'صدور توکن ممکن نشد.',
+      )
+    } finally {
+      setTokenBusy(false)
+    }
+  }
+
   const OverviewIcon = managementOverviewIcon
   const ResourceIcon = definition.icon
 
@@ -276,6 +314,7 @@ export function AdminWorkspace() {
               onEdit={(record) => openEditor({ type: 'edit', record })}
               onDelete={(record) => openEditor({ type: 'delete', record })}
               onPassword={(record) => openEditor({ type: 'password', record })}
+              onToken={(record) => void issueGatewayToken(record)}
             />
           )}
         </main>
@@ -316,6 +355,21 @@ export function AdminWorkspace() {
           ]}
           onClose={() => !mutationBusy && setEditor(null)}
           onConfirm={(password) => void updatePassword(password)}
+        />
+      ) : null}
+
+      {tokenGateway ? (
+        <GatewayTokenDialog
+          gatewayUid={tokenGateway.uid}
+          token={tokenValue}
+          busy={tokenBusy}
+          error={tokenError}
+          onClose={() => {
+            if (tokenBusy) return
+            setTokenGateway(null)
+            setTokenValue(null)
+            setTokenError(null)
+          }}
         />
       ) : null}
 

@@ -249,6 +249,23 @@ class WorkspaceEventOut(ApiSchema):
     parsing_error: str
 
 
+class IngestPayloadIn(ApiSchema):
+    """Hardware envelope; gateway identity comes from the bearer credential."""
+
+    device_local_id: str = Field(min_length=1, max_length=64)
+    event_type_code: str = Field(min_length=1, max_length=64)
+    schema_version: int = Field(gt=0)
+    message_id: str = Field(min_length=1, max_length=128)
+    payload: str = Field(min_length=1, max_length=64 * 1024)
+
+
+class IngestResultOut(ApiSchema):
+    raw_event_id: UUID
+    status: Literal["received", "processed", "failed"]
+    created: bool
+    reading_ids: list[int]
+
+
 ChartType = Literal["line", "bar", "area"]
 
 

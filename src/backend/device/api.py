@@ -25,6 +25,7 @@ from .schemas import (
     DeviceUpdateIn,
     GatewayCreateIn,
     GatewayOut,
+    GatewayTokenOut,
     GatewayUpdateIn,
     ParameterCreateIn,
     ParameterOut,
@@ -41,6 +42,7 @@ from .services import (
     delete_device_type_parameter,
     delete_gateway,
     delete_parameter,
+    rotate_gateway_ingest_token,
     update_device,
     update_device_type,
     update_device_type_parameter,
@@ -74,6 +76,16 @@ def post_gateway(request: HttpRequest, payload: GatewayCreateIn):
 @management_router.patch("/gateways/{pk}", response=GatewayOut)
 def patch_gateway(request: HttpRequest, pk: int, payload: GatewayUpdateIn):
     return update_gateway(pk=pk, payload=payload)
+
+
+@management_router.post("/gateways/{pk}/ingest-token", response=GatewayTokenOut)
+def post_gateway_ingest_token(request: HttpRequest, pk: int):
+    gateway, token = rotate_gateway_ingest_token(pk=pk)
+    return {
+        "gateway_id": gateway.pk,
+        "gateway_uid": gateway.uid,
+        "token": token,
+    }
 
 
 @management_router.delete("/gateways/{pk}", response={204: None})

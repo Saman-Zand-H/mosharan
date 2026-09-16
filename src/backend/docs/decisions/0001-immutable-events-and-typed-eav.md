@@ -62,5 +62,6 @@ multiple bytes and make character offsets ambiguous.
 - Database constraints enforce local device identity, idempotency, valid byte
   ranges, projection source shape, and exactly one reading value.
 - Cross-table semantic rules still require model or ingestion validation.
-- Retention, partitioning, gateway authentication, and ingestion endpoints remain
-  separate decisions.
+- Retention and partitioning remain separate decisions. Gateway authentication
+  and the HTTP ingestion adapter are implemented separately from the model
+  design: per-Gateway bearer tokens protect `POST /api/v1/ingest`.

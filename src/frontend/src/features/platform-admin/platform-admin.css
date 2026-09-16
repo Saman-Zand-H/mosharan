@@ -609,6 +609,16 @@
   border-color: var(--border-strong);
 }
 
+.admin-button--secondary {
+  color: var(--primary-dark);
+  background: var(--primary-soft);
+  border-color: #cbe3dc;
+}
+
+.admin-button--secondary:hover:not(:disabled) {
+  background: #e0f1eb;
+}
+
 .admin-button--danger {
   color: #fff;
   background: var(--failure);
@@ -801,6 +811,29 @@
 .admin-row-actions button:disabled {
   cursor: not-allowed;
   opacity: 0.25;
+}
+
+.gateway-token-dialog {
+  min-width: min(calc(100% - 2rem), 32rem);
+}
+
+.gateway-token-value {
+  display: block;
+  padding: 0.75rem;
+  margin-block: 0.9rem 0.65rem;
+  overflow-x: auto;
+  color: var(--ink-soft);
+  font-size: 0.72rem;
+  line-height: 1.5;
+  word-break: break-all;
+  background: #f5f7f4;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-sm);
+  user-select: all;
+}
+
+.gateway-token-copy {
+  margin-block-end: 0.9rem;
 }
 
 .admin-record-cards {

@@ -7,9 +7,13 @@ from ninja.pagination import LimitOffsetPagination, paginate
 from ninja.responses import Status
 
 from account.models import User
-from config.api_support import get_object_or_problem
-from config.security import active_session_auth, active_superuser_auth
-from device.models import Device, DeviceQuerySet
+from config.api_support import ApiProblem, get_object_or_problem
+from config.security import (
+    active_session_auth,
+    active_superuser_auth,
+    gateway_token_auth,
+)
+from device.models import Device, DeviceQuerySet, Gateway
 from event.models import (
     EventType,
     PayloadField,
@@ -25,6 +29,8 @@ from event.schemas import (
     EventTypeCreateIn,
     EventTypeOut,
     EventTypeUpdateIn,
+    IngestPayloadIn,
+    IngestResultOut,
     PayloadFieldCreateIn,
     PayloadFieldOut,
     PayloadFieldUpdateIn,
@@ -45,6 +51,12 @@ from event.schemas import (
     projection_rule_payload,
     serialize_constant_value,
     serialize_conversion_config,
+)
+from event.services import (
+    IdempotencyConflictError,
+    IngestionError,
+    IngestionRequest,
+    ingest_event,
 )
 from event.services.configuration import (
     create_event_type,
@@ -83,6 +95,58 @@ workspace_router = Router(
     tags=["Telemetry workspace"],
     by_alias=True,
 )
+ingestion_router = Router(
+    auth=gateway_token_auth,
+    tags=["Hardware ingestion"],
+    by_alias=True,
+)
+
+
+def _ingestion_error(error: IngestionError) -> ApiProblem:
+    status = 409 if isinstance(error, IdempotencyConflictError) else 422
+    return ApiProblem(
+        status=status,
+        code=error.code,
+        message=str(error),
+    )
+
+
+def _ingestion_payload(result) -> dict[str, object]:
+    return {
+        "raw_event_id": result.raw_event_id,
+        "status": result.status,
+        "created": result.created,
+        "reading_ids": list(result.reading_ids),
+    }
+
+
+@ingestion_router.post(
+    "/ingest",
+    response={200: IngestResultOut, 201: IngestResultOut},
+)
+def ingest(request: HttpRequest, payload: IngestPayloadIn):
+    """Accept one schema-driven hardware payload.
+
+    Gateway identity is taken from the authenticated gateway token and header,
+    never from the JSON body. The service resolves the matching
+    ``PayloadSchema`` and performs raw-first parsing/projection atomically.
+    """
+    gateway = cast(Gateway, getattr(request, "auth"))
+    try:
+        result = ingest_event(
+            IngestionRequest(
+                gateway_uid=gateway.uid,
+                device_local_id=payload.device_local_id,
+                event_type_code=payload.event_type_code,
+                schema_version=payload.schema_version,
+                message_id=payload.message_id,
+                payload=payload.payload,
+            )
+        )
+    except IngestionError as error:
+        raise _ingestion_error(error) from error
+    response_payload = _ingestion_payload(result)
+    return Status(201 if result.created else 200, response_payload)
 
 
 @workspace_router.get("/dashboard", response=DashboardOut)

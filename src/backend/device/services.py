@@ -1,3 +1,5 @@
+import secrets
+
 from django.db import transaction
 
 from account.models import Company
@@ -100,6 +102,18 @@ def update_gateway(*, pk: int, payload: GatewayUpdateIn) -> Gateway:
     for field, value in values.items():
         setattr(gateway, field, value)
     return save_validated(gateway, update_fields=(*values,))
+
+
+@transaction.atomic
+def rotate_gateway_ingest_token(*, pk: int) -> tuple[Gateway, str]:
+    gateway = get_object_or_problem(
+        Gateway.objects.select_for_update(),
+        pk=pk,
+    )
+    token = secrets.token_urlsafe(32)
+    gateway.set_ingest_token(token)
+    gateway = save_validated(gateway, update_fields=("ingest_token_hash",))
+    return gateway, token
 
 
 @transaction.atomic

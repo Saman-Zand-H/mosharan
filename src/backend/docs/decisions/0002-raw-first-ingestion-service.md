@@ -62,5 +62,9 @@ device defects or tampering.
 - Failed raw events remain inspectable and recoverable.
 - `select_for_update()` provides real row locking only on supported databases;
   SQLite development runs do not prove production concurrency behavior.
-- Authentication, endpoint status mapping, request throttling, and background
-  retry scheduling remain separate work.
+- Gateway token authentication and HTTP status mapping remain transport
+  concerns. The implemented HTTP adapter is `POST /api/v1/ingest`; it
+  authenticates a gateway bearer token, passes the gateway identity into this
+  service, and maps a new processed event to `201`, an identical processed
+  retry to `200`, envelope conflicts to `409`, and ingestion/schema failures to
+  `422`.

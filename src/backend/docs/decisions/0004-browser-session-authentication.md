@@ -11,10 +11,10 @@ Accepted
 ## Context
 
 The React control plane needs authenticated access to company-scoped telemetry
-metadata and a platform-administration workspace. Browser authentication
-must not be confused with future Gateway authentication: human users operate the
-control plane, while hardware will eventually require its own credential and
-request-integrity design.
+metadata and a platform-administration workspace. Browser authentication must
+not be confused with Gateway authentication: human users operate the control
+plane, while hardware uses its own per-Gateway credential and request-integrity
+boundary.
 
 ## Decision
 
@@ -65,4 +65,8 @@ integrity have different requirements and remain a separate decision.
   platform-account maintenance.
 - Login throttling uses Django's cache and needs a shared production cache when
   the API runs on multiple processes or hosts.
-- Gateway authentication and the HTTP ingestion endpoint are still unimplemented.
+- Hardware uses a separate per-Gateway bearer token at `POST /api/v1/ingest`;
+  browser sessions are never accepted for ingestion. Tokens are stored as
+  hashes, rotated by platform administrators, and returned in plaintext only
+  during the rotation response. HTTPS remains required outside local
+  development.

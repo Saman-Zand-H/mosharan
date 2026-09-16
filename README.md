@@ -122,3 +122,10 @@ gateways, devices, device types, parameters, parameter assignments, event types,
 payload schemas, payload fields, projection rules, dashboard tabs, and
 visualizations. Regular company users do not receive this navigation entry or
 access to its API endpoints.
+
+Hardware pushes metrics to `POST /api/v1/ingest` with `Authorization: Bearer
+<gateway-token>`, `X-Gateway-UID`, and a JSON body containing
+`deviceLocalId`, `eventTypeCode`, `schemaVersion`, `messageId`, and the raw
+`payload`. The endpoint uses the database `PayloadSchema`, `PayloadField`, and
+`ProjectionRule` records. Provision tokens in **Platform management → Gateways**;
+the plaintext token is shown only once. Use HTTPS outside local development.

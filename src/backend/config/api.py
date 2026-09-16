@@ -22,8 +22,8 @@ from device.schemas import (
     GatewayOut,
     ParameterOut,
 )
+from event.api import ingestion_router, simulator_router, workspace_router
 from event.api import management_router as event_management_router
-from event.api import simulator_router, workspace_router
 from event.models import (
     EventType,
     PayloadField,
@@ -169,4 +169,5 @@ api.add_router("/management", account_management_router)
 api.add_router("/management", device_management_router)
 api.add_router("/management", event_management_router)
 api.add_router("/simulator", simulator_router)
+api.add_router("", ingestion_router)
 api.add_router("", workspace_router)

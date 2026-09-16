@@ -130,7 +130,12 @@ export function getRecordCells(
       return [
         { primary: text(record, 'uid'), secondary: text(record, 'title'), ltr: true },
         { primary: company?.name ?? 'تخصیص‌نیافته', tone: company ? 'neutral' : 'inactive' },
-        statusCell(bool(record, 'isActive')),
+        {
+          ...statusCell(bool(record, 'isActive')),
+          secondary: bool(record, 'ingestTokenConfigured')
+            ? 'توکن دریافت تنظیم شده'
+            : 'توکن دریافت تنظیم نشده',
+        },
       ]
     }
     case 'devices': {

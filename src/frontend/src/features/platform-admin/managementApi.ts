@@ -62,3 +62,16 @@ export function changeUserPassword(userId: number, password: string) {
     body: { password },
   })
 }
+
+export interface GatewayTokenResponse {
+  gatewayId: number
+  gatewayUid: string
+  token: string
+}
+
+export function rotateGatewayIngestToken(gatewayId: number) {
+  return apiRequest<GatewayTokenResponse>(
+    `/management/gateways/${gatewayId}/ingest-token`,
+    { method: 'POST' },
+  )
+}

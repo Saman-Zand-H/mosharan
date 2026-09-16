@@ -40,6 +40,7 @@ export interface GatewayRecord extends TimestampedRecord {
   uid: string
   title: string
   isActive: boolean
+  ingestTokenConfigured: boolean
 }
 
 export interface DeviceRecord extends TimestampedRecord {

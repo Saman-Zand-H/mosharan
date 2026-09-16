@@ -398,6 +398,7 @@ class Command(BaseCommand):
                 Visualization,
                 {"tab": tab, "y_axis": parameters[parameter_code]},
                 {
+                    "title": title,
                     "chart_type": chart_type,
                     "x_axis": None,
                     "y_axis": parameters[parameter_code],

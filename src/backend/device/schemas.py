@@ -74,8 +74,15 @@ class GatewayOut(ApiSchema):
     uid: str
     title: str
     is_active: bool
+    ingest_token_configured: bool
     date_created: datetime
     date_updated: datetime
+
+
+class GatewayTokenOut(ApiSchema):
+    gateway_id: int
+    gateway_uid: str
+    token: str
 
 
 class GatewayCreateIn(ApiSchema):

@@ -66,5 +66,6 @@ The latest boolean Parameter Reading for a Device plus its chronological history
 The dashboard represents the latest state with a green True or red False tile.
 
 **Ingestion**:
-Acceptance of one Gateway event, preserving its Raw Event and deriving any
-Parameter Readings.
+Acceptance of one Gateway event through the per-Gateway-token-authenticated
+`POST /api/v1/ingest` endpoint, preserving its Raw Event and deriving any
+Parameter Readings through the matching PayloadSchema and ProjectionRules.
