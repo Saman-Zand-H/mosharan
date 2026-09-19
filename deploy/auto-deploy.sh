@@ -17,7 +17,10 @@ exec >>"$LOG_FILE" 2>&1
 # The receiver runs a unique copy from /var/tmp so git pull can rewrite the
 # tracked file mid-run; only those copies clean themselves up.
 case "$0" in
-    /var/tmp/mosharan-deploy/*) trap 'rm -f "$0"' EXIT ;;
+    /var/tmp/mosharan-deploy/*)
+        trap 'rm -f "$0"' EXIT
+        trap 'rm -f "$0"; exit 1' HUP INT TERM
+        ;;
 esac
 
 log() { printf '%s %s\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$*"; }

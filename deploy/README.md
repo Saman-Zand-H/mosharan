@@ -12,8 +12,10 @@ the `mosharan-deploy-webhook.service` systemd unit. Pushes to `master`
 trigger `deploy/auto-deploy.sh`, which serializes through flock, takes a
 consistent SQLite backup, pulls ff-only, sets `MOSHARAN_IMAGE_TAG` to the
 new commit, rebuilds, waits for health, and restarts the receiver so its
-own changes apply. Deploys log to `/var/log/mosharan-deploy/` (newest 30
-kept). Pushes to other branches and GitHub ping events are ignored.
+own changes apply. The unit uses `KillMode=process` so that restart kills
+only the listener, not the cgroup's detached deploy runs. Deploys log to
+`/var/log/mosharan-deploy/` (newest 30 kept). Pushes to other branches and
+GitHub ping events are ignored.
 
 Server-side one-time installation on the VPS (`/opt/src/mosharan`):
 

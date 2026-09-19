@@ -6,6 +6,9 @@ Wants=network-online.target
 [Service]
 Type=simple
 ExecStart=/usr/bin/python3 /opt/src/mosharan/deploy/webhook-receiver.py
+# The receiver spawns detached deploy runs inside its own cgroup; stopping or
+# restarting the unit must signal only the listener, never the running deploy.
+KillMode=process
 Restart=always
 RestartSec=3
 
