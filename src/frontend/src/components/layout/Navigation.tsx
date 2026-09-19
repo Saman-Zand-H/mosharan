@@ -1,19 +1,15 @@
 import { ChevronLeft } from 'lucide-react'
+import { NavLink } from 'react-router-dom'
 
 import { navigationItems } from '../../data/mockData'
-import type { SectionId } from '../../types'
+import { sectionPaths } from '../../routes'
 
 interface NavigationProps {
-  activeSection: SectionId
   isSuperuser: boolean
-  onSelect: (section: SectionId) => void
+  onNavigate?: () => void
 }
 
-export function Navigation({
-  activeSection,
-  isSuperuser,
-  onSelect,
-}: NavigationProps) {
+export function Navigation({ isSuperuser, onNavigate }: NavigationProps) {
   const workspaceItems = navigationItems.filter((item) => !item.superuserOnly)
   const platformItems = navigationItems.filter(
     (item) => item.superuserOnly && isSuperuser,
@@ -22,16 +18,10 @@ export function Navigation({
   const renderItems = (items: typeof navigationItems) =>
     items.map((item) => {
       const Icon = item.icon
-      const isActive = item.id === activeSection
 
       return (
         <li key={item.id}>
-          <button
-            className="navigation__item"
-            type="button"
-            aria-current={isActive ? 'page' : undefined}
-            onClick={() => onSelect(item.id)}
-          >
+          <NavLink className="navigation__item" to={sectionPaths[item.id]} onClick={onNavigate}>
             <Icon size={19} strokeWidth={1.8} aria-hidden="true" />
             <span>{item.label}</span>
             <ChevronLeft
@@ -39,7 +29,7 @@ export function Navigation({
               size={15}
               aria-hidden="true"
             />
-          </button>
+          </NavLink>
         </li>
       )
     })

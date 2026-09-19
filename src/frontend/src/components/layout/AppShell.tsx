@@ -1,27 +1,22 @@
 import { useState, type ReactNode, type RefObject } from 'react'
 import { Menu } from 'lucide-react'
 
-import type { SectionId } from '../../types'
 import type { AuthUser } from '../../features/auth/authContext'
 import { DesktopSidebar } from './DesktopSidebar'
 import { MobileNavigation } from './MobileNavigation'
 
 interface AppShellProps {
-  activeSection: SectionId
   children: ReactNode
   mainContentRef: RefObject<HTMLElement | null>
   user: AuthUser
   onLogout: () => Promise<void>
-  onSectionChange: (section: SectionId) => void
 }
 
 export function AppShell({
-  activeSection,
   children,
   mainContentRef,
   user,
   onLogout,
-  onSectionChange,
 }: AppShellProps) {
   const [mobileNavigationOpen, setMobileNavigationOpen] = useState(false)
 
@@ -30,19 +25,12 @@ export function AppShell({
       <a className="skip-link" href="#main-content">
         رفتن به محتوای اصلی
       </a>
-      <DesktopSidebar
-        activeSection={activeSection}
-        user={user}
-        onLogout={onLogout}
-        onSelect={onSectionChange}
-      />
+      <DesktopSidebar user={user} onLogout={onLogout} />
       <MobileNavigation
-        activeSection={activeSection}
         user={user}
         open={mobileNavigationOpen}
         onClose={() => setMobileNavigationOpen(false)}
         onLogout={onLogout}
-        onSelect={onSectionChange}
       />
 
       <div className="app-shell__content">

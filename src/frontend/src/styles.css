@@ -203,6 +203,7 @@ pre {
   padding: 0.65rem 0.75rem;
   color: #b7c2be;
   text-align: start;
+  text-decoration: none;
   background: transparent;
   border: 1px solid transparent;
   border-radius: var(--radius-sm);

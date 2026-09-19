@@ -1,4 +1,5 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef } from 'react'
+import { Navigate, Route, Routes, useLocation, useNavigate } from 'react-router-dom'
 
 import { AppShell } from './components/layout/AppShell'
 import { moduleSummaries, navigationItems } from './data/mockData'
@@ -9,12 +10,24 @@ import { AdminWorkspace } from './features/platform-admin/AdminWorkspace'
 import { ModulePage } from './pages/ModulePage'
 import { OverviewPage } from './pages/OverviewPage'
 import { PacketSimulatorPage } from './pages/PacketSimulatorPage'
-import type { SectionId } from './types'
+import { sectionFromPath, sectionPaths } from './routes'
+import type { ModuleSectionId, SectionId } from './types'
+
+const moduleSections: ModuleSectionId[] = [
+  'gateways',
+  'devices',
+  'events',
+  'parameters',
+  'protocols',
+]
 
 function App() {
   const { status, user, logout } = useAuth()
-  const [activeSection, setActiveSection] = useState<SectionId>('overview')
+  const location = useLocation()
+  const navigate = useNavigate()
   const mainContentRef = useRef<HTMLElement>(null)
+  const activeSection = sectionFromPath(location.pathname)
+  const firstRenderRef = useRef(true)
 
   useEffect(() => {
     if (status === 'anonymous' || status === 'error') {
@@ -27,18 +40,19 @@ function App() {
     document.title = `${sectionTitle ?? 'پایش'} | پایش`
   }, [activeSection, status])
 
-  const changeSection = (section: SectionId) => {
-    if (
-      (section === 'management' || section === 'simulator') &&
-      !user?.isSuperuser
-    ) {
+  useEffect(() => {
+    if (firstRenderRef.current) {
+      firstRenderRef.current = false
       return
     }
-    setActiveSection(section)
     window.requestAnimationFrame(() => {
       window.scrollTo({ top: 0 })
       mainContentRef.current?.focus({ preventScroll: true })
     })
+  }, [location.pathname])
+
+  const changeSection = (section: SectionId) => {
+    navigate(sectionPaths[section])
   }
 
   if (status === 'loading') {
@@ -56,29 +70,37 @@ function App() {
   if (!user) return null
 
   return (
-    <AppShell
-      activeSection={activeSection}
-      mainContentRef={mainContentRef}
-      user={user}
-      onLogout={logout}
-      onSectionChange={changeSection}
-    >
-      {activeSection === 'overview' ? (
-        <OverviewPage onSectionChange={changeSection} />
-      ) : activeSection === 'simulator' ? (
-        <RequireSuperuser user={user} onLeave={() => changeSection('overview')}>
-          <PacketSimulatorPage />
-        </RequireSuperuser>
-      ) : activeSection === 'management' ? (
-        <RequireSuperuser user={user} onLeave={() => changeSection('overview')}>
-          <AdminWorkspace />
-        </RequireSuperuser>
-      ) : (
-        <ModulePage
-          section={activeSection}
-          summary={moduleSummaries[activeSection]}
+    <AppShell mainContentRef={mainContentRef} user={user} onLogout={logout}>
+      <Routes>
+        <Route
+          path={sectionPaths.overview}
+          element={<OverviewPage onSectionChange={changeSection} />}
         />
-      )}
+        <Route
+          path={sectionPaths.simulator}
+          element={
+            <RequireSuperuser user={user} onLeave={() => changeSection('overview')}>
+              <PacketSimulatorPage />
+            </RequireSuperuser>
+          }
+        />
+        <Route
+          path={sectionPaths.management}
+          element={
+            <RequireSuperuser user={user} onLeave={() => changeSection('overview')}>
+              <AdminWorkspace />
+            </RequireSuperuser>
+          }
+        />
+        {moduleSections.map((section) => (
+          <Route
+            key={section}
+            path={sectionPaths[section]}
+            element={<ModulePage section={section} summary={moduleSummaries[section]} />}
+          />
+        ))}
+        <Route path="*" element={<Navigate to={sectionPaths.overview} replace />} />
+      </Routes>
     </AppShell>
   )
 }
