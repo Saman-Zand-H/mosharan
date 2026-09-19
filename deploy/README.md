@@ -3,6 +3,51 @@
 Run commands from the repository root. Docker Engine and Compose v2 or newer
 are required. Python and Node run inside the build/runtime images.
 
+## Automatic deployment on push
+
+A GitHub webhook (JSON content type, push events) posts to
+`https://app.mosharanco.com/deploy/`. The host Nginx virtual host forwards
+that path to `deploy/webhook-receiver.py`, a loopback-only receiver run by
+the `mosharan-deploy-webhook.service` systemd unit. Pushes to `master`
+trigger `deploy/auto-deploy.sh`, which serializes through flock, takes a
+consistent SQLite backup, pulls ff-only, sets `MOSHARAN_IMAGE_TAG` to the
+new commit, rebuilds, waits for health, and restarts the receiver so its
+own changes apply. Deploys log to `/var/log/mosharan-deploy/` (newest 30
+kept). Pushes to other branches and GitHub ping events are ignored.
+
+Server-side one-time installation on the VPS (`/opt/src/mosharan`):
+
+```bash
+cp deploy/mosharan-deploy-webhook.service /etc/systemd/system/
+systemctl daemon-reload
+systemctl enable --now mosharan-deploy-webhook
+```
+
+Then add to the `app.mosharanco.com` Nginx server block (443), above the
+catch-all `location /`:
+
+```nginx
+location = /deploy/ {
+    proxy_pass http://127.0.0.1:8123;
+    proxy_set_header Host $host;
+    proxy_set_header X-Real-IP $remote_addr;
+    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+}
+```
+
+The server pulls over SSH with its GitHub deploy key, so `origin` must be
+`git@github.com:Saman-Zand-H/mosharan.git`. The webhook currently sends no
+secret; because the endpoint only rebuilds `origin/master`, abuse is limited
+to wasted builds. To lock it down, write a random value to
+`/etc/mosharan-deploy-webhook.secret` (first line) and set the same GitHub
+webhook secret; the receiver then enforces `X-Hub-Signature-256`. CI
+(`.github/workflows/ci.yml`) runs lint, type, and build checks on the same
+pushes; deploys do not wait for CI results.
+
+Manual trigger: `curl -X POST https://app.mosharanco.com/deploy/ -d '{}'`
+always starts a deploy attempt (which no-ops when already current), and
+`bash deploy/auto-deploy.sh` runs one directly.
+
 ## Initial setup
 
 ```bash
