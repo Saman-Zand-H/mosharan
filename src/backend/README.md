@@ -160,7 +160,9 @@ token from **Platform management → Gateways → issue token**; the plaintext t
 is returned only once.
 
 See [ADR-002](docs/decisions/0002-raw-first-ingestion-service.md) for transaction
-and retry behavior.
+and retry behavior, and the full endpoint reference in
+[docs/ingest-api.md](docs/ingest-api.md) for request/response schemas, error
+codes, and a worked payload example.
 
 ## Company access
 
