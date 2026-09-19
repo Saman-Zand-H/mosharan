@@ -817,6 +817,82 @@
   gap: 0.3rem;
 }
 
+/* ------------------------------- real-request curl -------------------------------- */
+
+.curl-command {
+  margin: 0 1rem 1rem;
+  overflow: hidden;
+  background: #17201e;
+  border: 1px solid #253733;
+  border-radius: var(--radius-sm);
+}
+
+.curl-command__bar {
+  display: flex;
+  padding: 0.5rem 0.7rem;
+  color: #96a49e;
+  border-block-end: 1px solid rgb(255 255 255 / 8%);
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.curl-command__title {
+  display: inline-flex;
+  font-size: 0.6875rem;
+  font-weight: 680;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.curl-command__title svg {
+  color: #77cdb6;
+}
+
+.curl-command__copy {
+  display: inline-flex;
+  min-height: 1.7rem;
+  padding: 0.2rem 0.55rem;
+  color: #dce6e2;
+  font-size: 0.6875rem;
+  font-weight: 680;
+  background: rgb(255 255 255 / 6%);
+  border: 1px solid rgb(255 255 255 / 12%);
+  border-radius: var(--radius-sm);
+  align-items: center;
+  gap: 0.3rem;
+  transition: background 0.15s ease, border-color 0.15s ease;
+}
+
+.curl-command__copy:hover {
+  background: rgb(255 255 255 / 12%);
+}
+
+.curl-command__copy:focus-visible {
+  outline: 2px solid #77cdb6;
+  outline-offset: 1px;
+}
+
+.curl-command__code {
+  margin: 0;
+  padding: 0.7rem 0.85rem;
+  overflow-x: auto;
+  color: #b6d8ce;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.75rem;
+  line-height: 1.8;
+  white-space: pre;
+}
+
+.curl-command__hint {
+  margin: 0;
+  padding: 0.5rem 0.7rem 0.6rem;
+  color: #96a49e;
+  font-size: 0.6875rem;
+  line-height: 1.7;
+  border-block-start: 1px solid rgb(255 255 255 / 8%);
+}
+
 /* ---------------------------------- status pills ---------------------------------- */
 
 .receipt-status {

@@ -9,6 +9,7 @@ import {
   Type,
 } from 'lucide-react'
 
+import { CurlCommand } from './CurlCommand'
 import { PipelineStrip } from './PipelineStrip'
 import type { ProjectedReading } from './packetProtocol'
 import type { SimulationPhase, SimulationReceipt } from './simulatorTypes'
@@ -100,6 +101,7 @@ export function DecodedPacketPanel({
           </div>
         </div>
       )}
+      {receipt ? <CurlCommand receipt={receipt} /> : null}
     </section>
   )
 }
