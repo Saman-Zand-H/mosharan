@@ -136,7 +136,12 @@ class Handler(BaseHTTPRequestHandler):
             return
 
         head = payload.get("after", "")[:12]
-        start_deploy(head)
+        try:
+            start_deploy(head)
+        except Exception:
+            log.exception("failed to start deploy for %s", head)
+            self.reply(500, {"error": "failed to start deploy"})
+            return
         self.reply(200, {"status": "deploy started", "commit": head})
 
 
