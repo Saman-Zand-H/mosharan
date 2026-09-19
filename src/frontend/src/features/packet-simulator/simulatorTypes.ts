@@ -17,6 +17,12 @@ export interface SimulatorEnvelope {
   readonly messageId: string
 }
 
+export interface SimulationRunResult {
+  readonly status: 'processed' | 'failed'
+  readonly readingCount?: number
+  readonly error?: string
+}
+
 export interface SimulationReceipt {
   readonly id: string
   readonly rawEventId: string
@@ -27,7 +33,6 @@ export interface SimulationReceipt {
   readonly envelope: SimulatorEnvelope
   readonly receivedAt: string
   readonly status: 'processed' | 'failed'
-  readonly latencyMs: number
   readonly byteLength?: number
   readonly payload: string
   readonly payloadHex: string

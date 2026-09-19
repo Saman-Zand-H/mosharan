@@ -1,4 +1,5 @@
 import {
+  CheckCircle2,
   CirclePlay,
   Clock3,
   Radio,
@@ -14,19 +15,25 @@ import {
   type PayloadGenerationResult,
 } from './payloadGenerator'
 import type {
+  CatalogDevice,
   CatalogField,
   CatalogPayloadSchema,
 } from './schemaCatalog'
+import type { SimulationRunResult } from './simulatorTypes'
 
 export interface PacketComposerProps {
   readonly schemas: readonly CatalogPayloadSchema[]
   readonly schemaId: string
+  readonly devices: readonly CatalogDevice[]
+  readonly deviceId: string
   readonly drafts: FieldDrafts
   readonly generation: PayloadGenerationResult
   readonly gapByte: GapByte
   readonly busy: boolean
   readonly streaming: boolean
   readonly canReceive: boolean
+  readonly runResult?: SimulationRunResult
+  readonly onDeviceChange: (deviceId: string) => void
   readonly onDraftChange: (fieldId: string, value: string) => void
   readonly onFillTimestamp: (fieldId: string) => void
   readonly onGapByteChange: (gapByte: GapByte) => void
@@ -64,12 +71,16 @@ const fieldDetail = (field: CatalogField, usedBytes: number): string => {
 export function PacketComposer({
   schemas,
   schemaId,
+  devices,
+  deviceId,
   drafts,
   generation,
   gapByte,
   busy,
   streaming,
   canReceive,
+  runResult,
+  onDeviceChange,
   onDraftChange,
   onFillTimestamp,
   onGapByteChange,
@@ -88,7 +99,7 @@ export function PacketComposer({
     <section className="simulator-card packet-composer" aria-labelledby="packet-composer-title">
       <header className="simulator-card__header">
         <div>
-          <span className="simulator-kicker">مولد مبتنی بر PayloadField</span>
+          <span className="simulator-kicker">ورودی شبیه‌سازی</span>
           <h2 id="packet-composer-title">ساخت payload آزمایشی</h2>
           <p>هر مقدار در بازهٔ بایتی ثبت‌شده در پایگاه داده نوشته می‌شود.</p>
         </div>
@@ -99,7 +110,7 @@ export function PacketComposer({
 
       <div className="packet-form">
         <label className="packet-field">
-          <span>PayloadSchema پایگاه داده</span>
+          <span>رویداد و نسخهٔ schema</span>
           <select
             value={schemaId}
             disabled={busy || streaming}
@@ -111,22 +122,28 @@ export function PacketComposer({
               </option>
             ))}
           </select>
-          <small>
-            <code dir="ltr">{schema?.id}</code> از API پایگاه داده
-          </small>
+          <small><code dir="ltr">{schema?.id}</code> از API پایگاه داده</small>
         </label>
 
         <label className="packet-field">
-          <span>پرکنندهٔ فاصله‌ها</span>
+          <span>دستگاه دریافت‌کننده</span>
           <select
-            value={String(gapByte)}
-            disabled={busy || streaming}
-            onChange={(event) => onGapByteChange(Number(event.target.value) as GapByte)}
+            value={deviceId}
+            disabled={busy || streaming || !devices.length}
+            onChange={(event) => onDeviceChange(event.target.value)}
           >
-            <option value="32">space · 0x20</option>
-            <option value="48">zero · 0x30</option>
+            {!devices.length ? <option value="">دستگاه سازگار وجود ندارد</option> : null}
+            {devices.map((device) => (
+              <option key={device.id} value={device.id}>
+                {device.gateway.title} · {device.localId}
+              </option>
+            ))}
           </select>
-          <small>فاصله‌ها و دنبالهٔ خارج از PayloadField با یک بایت ASCII امن پر می‌شوند.</small>
+          <small>
+            {devices.length
+              ? 'دستگاه‌ها و درگاه‌های فعالِ هم‌نوع با این schema.'
+              : 'payload ساخته می‌شود، اما برای اجرای دریافت باید Device سازگاری ثبت و فعال باشد.'}
+          </small>
         </label>
 
         {fields.map((field) => {
@@ -182,6 +199,22 @@ export function PacketComposer({
           )
         })}
 
+        <details className="packet-advanced">
+          <summary>تنظیمات پیشرفته</summary>
+          <label className="packet-field">
+            <span>پرکنندهٔ فاصله‌ها</span>
+            <select
+              value={String(gapByte)}
+              disabled={busy || streaming}
+              onChange={(event) => onGapByteChange(Number(event.target.value) as GapByte)}
+            >
+              <option value="32">space · 0x20</option>
+              <option value="48">zero · 0x30</option>
+            </select>
+            <small>فاصله‌ها و دنبالهٔ خارج از PayloadField با یک بایت ASCII امن پر می‌شوند.</small>
+          </label>
+        </details>
+
         <label className="packet-field packet-field--hex">
           <span>payload خام تولیدشده</span>
           <textarea
@@ -192,7 +225,7 @@ export function PacketComposer({
             value={generation.ok ? generation.payload : ''}
             aria-describedby={globalIssues.length ? 'payload-generation-errors' : undefined}
           />
-          <small>این متن دقیقاً به بایت‌های UTF-8 قابل مشاهده در بازرس تبدیل می‌شود.</small>
+          <small>این متن دقیقاً به بایت‌های UTF-8 قابل مشاهده در نقشهٔ بایت‌ها تبدیل می‌شود.</small>
         </label>
       </div>
 
@@ -235,6 +268,26 @@ export function PacketComposer({
           {streaming ? 'توقف جریان' : 'شروع جریان خودکار'}
         </button>
       </div>
+
+      {runResult ? (
+        <p
+          className={`composer-run-result composer-run-result--${runResult.status}`}
+          role="status"
+          aria-live="polite"
+        >
+          {runResult.status === 'processed' ? (
+            <>
+              <CheckCircle2 size={15} aria-hidden="true" />
+              پردازش موفق — {(runResult.readingCount ?? 0).toLocaleString('fa-IR')} خوانش ساخته شد.
+            </>
+          ) : (
+            <>
+              <TriangleAlert size={15} aria-hidden="true" />
+              دریافت ناموفق — payload با schema پایگاه داده منطبق نشد.
+            </>
+          )}
+        </p>
+      ) : null}
     </section>
   )
 }

@@ -9,8 +9,9 @@ import {
   Type,
 } from 'lucide-react'
 
+import { PipelineStrip } from './PipelineStrip'
 import type { ProjectedReading } from './packetProtocol'
-import type { SimulationReceipt } from './simulatorTypes'
+import type { SimulationPhase, SimulationReceipt } from './simulatorTypes'
 
 const readingIcons = {
   integer: Binary,
@@ -31,14 +32,20 @@ function ReadingCard({ reading }: { reading: ProjectedReading }) {
   )
 }
 
-export function DecodedPacketPanel({ receipt }: { receipt?: SimulationReceipt }) {
+export function DecodedPacketPanel({
+  phase,
+  receipt,
+}: {
+  phase: SimulationPhase
+  receipt?: SimulationReceipt
+}) {
   return (
     <section className="simulator-card decoded-card" aria-labelledby="decoded-title">
       <header className="simulator-card__header">
         <div>
-          <span className="simulator-kicker">خروجی آخرین پردازش</span>
-          <h2 id="decoded-title">فیلدها و خوانش‌ها</h2>
-          <p>خروجی عمومی PayloadField و ProjectionRuleهای schema انتخاب‌شده</p>
+          <span className="simulator-kicker">نتیجهٔ دریافت</span>
+          <h2 id="decoded-title">payload رمزگشایی‌شده</h2>
+          <p>مقادیر از همان payload بازخوانی و خوانش‌ها ساخته می‌شوند.</p>
         </div>
         {receipt ? (
           <span className={`receipt-status receipt-status--${receipt.status}`}>
@@ -48,11 +55,15 @@ export function DecodedPacketPanel({ receipt }: { receipt?: SimulationReceipt })
         ) : null}
       </header>
 
+      <div className="pipeline-strip-wrap">
+        <PipelineStrip phase={phase} />
+      </div>
+
       {!receipt ? (
         <div className="simulator-empty">
           <Braces size={28} aria-hidden="true" />
           <strong>هنوز payloadی دریافت نشده است</strong>
-          <p>با دکمهٔ «دریافت همین payload» نتیجهٔ schema اینجا دیده می‌شود.</p>
+          <p>با دکمهٔ «دریافت payload تولیدشده» نتیجهٔ تجزیهٔ همین schema اینجا دیده می‌شود.</p>
         </div>
       ) : receipt.status === 'failed' ? (
         <div className="decoded-failure" role="alert">
@@ -69,10 +80,11 @@ export function DecodedPacketPanel({ receipt }: { receipt?: SimulationReceipt })
             <div><dt>شناسهٔ درگاه</dt><dd><code dir="ltr">{receipt.envelope.gatewayUid}</code></dd></div>
             <div><dt>شناسهٔ دستگاه</dt><dd><code dir="ltr">{receipt.envelope.deviceLocalId}</code></dd></div>
             <div><dt>schema</dt><dd><code dir="ltr">{receipt.schemaId}</code></dd></div>
-            <div><dt>Raw Event</dt><dd><code dir="ltr">{receipt.rawEventId}</code></dd></div>
+            <div><dt>رویداد خام (شبیه‌سازی‌شده)</dt><dd><code dir="ltr">{receipt.rawEventId}</code></dd></div>
           </dl>
 
-          <div className="decoded-fields" aria-label="فیلدهای تجزیه‌شده">
+          <h3 className="decoded-section-title">بازخوانی فیلدها از payload</h3>
+          <div className="decoded-fields" aria-label="بازخوانی فیلدها از payload">
             {receipt.fields?.map((field) => (
               <article key={field.id}>
                 <span>{field.name}</span>
@@ -82,6 +94,7 @@ export function DecodedPacketPanel({ receipt }: { receipt?: SimulationReceipt })
             ))}
           </div>
 
+          <h3 className="decoded-section-title">خوانش‌های ساخته‌شده</h3>
           <div className="projected-readings" aria-label="خوانش‌های ساخته‌شده">
             {receipt.readings?.map((reading) => <ReadingCard key={reading.code} reading={reading} />)}
           </div>

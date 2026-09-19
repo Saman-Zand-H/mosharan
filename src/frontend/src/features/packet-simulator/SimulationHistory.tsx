@@ -1,4 +1,4 @@
-import { CheckCircle2, Clock3, Inbox, Trash2, TriangleAlert } from 'lucide-react'
+import { CheckCircle2, Inbox, Trash2, TriangleAlert } from 'lucide-react'
 
 import type { SimulationReceipt } from './simulatorTypes'
 
@@ -17,13 +17,20 @@ export function SimulationHistory({
   onClear,
   onSelect,
 }: SimulationHistoryProps) {
+  const processed = receipts.filter((receipt) => receipt.status === 'processed').length
+  const failed = receipts.length - processed
+
   return (
     <section className="simulator-card history-card" aria-labelledby="history-title">
       <header className="simulator-card__header">
         <div>
           <span className="simulator-kicker">حافظهٔ نشست</span>
-          <h2 id="history-title">رویدادهای شبیه‌سازی‌شده</h2>
-          <p>حداکثر هشت دریافت اخیر در مرورگر نگه داشته می‌شود.</p>
+          <h2 id="history-title">دریافت‌های شبیه‌سازی‌شده</h2>
+          <p>
+            {receipts.length.toLocaleString('fa-IR')} دریافت
+            {' · '}{processed.toLocaleString('fa-IR')} موفق
+            {' · '}{failed.toLocaleString('fa-IR')} ناموفق
+          </p>
         </div>
         <button className="history-clear" type="button" onClick={onClear} disabled={!receipts.length}>
           <Trash2 size={15} aria-hidden="true" />
@@ -35,7 +42,7 @@ export function SimulationHistory({
         <div className="simulator-empty simulator-empty--compact">
           <Inbox size={25} aria-hidden="true" />
           <strong>نشست خالی است</strong>
-          <p>اولین دریافت در این فهرست ثبت خواهد شد.</p>
+          <p>آخرین هشت دریافت این نشست در مرورگر نگه داشته می‌شود.</p>
         </div>
       ) : (
         <ol className="simulation-log">
@@ -62,7 +69,6 @@ export function SimulationHistory({
                 </span>
                 <span className="simulation-log__meta">
                   <b dir="ltr">{receipt.byteLength === undefined ? '—' : `${receipt.byteLength} B`}</b>
-                  <small><Clock3 size={11} aria-hidden="true" />{receipt.latencyMs.toLocaleString('fa-IR')} ms</small>
                 </span>
               </button>
             </li>

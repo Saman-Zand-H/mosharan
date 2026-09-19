@@ -17,15 +17,26 @@ const codecLabels = {
   boolean: 'boolean · ASCII',
 } as const
 
-const toneFor = (field: CatalogField | undefined) => {
-  if (!field) return 'unknown'
-  if (field.role === 'timestamp') return 'time'
-  if (field.role === 'sequence') return 'device'
-  if (field.role === 'checksum') return 'terminator'
+type FieldTone = 'timestamp' | 'sequence' | 'checksum' | 'state' | 'text' | 'data'
+
+const toneFor = (field: CatalogField | undefined): FieldTone => {
+  if (!field) return 'data'
+  if (field.role === 'timestamp') return 'timestamp'
+  if (field.role === 'sequence') return 'sequence'
+  if (field.role === 'checksum') return 'checksum'
   if (field.wireCodec === 'boolean') return 'state'
-  if (field.wireCodec === 'utf8') return 'gateway'
-  return 'payload'
+  if (field.wireCodec === 'utf8') return 'text'
+  return 'data'
 }
+
+const toneLegend: readonly { tone: FieldTone; label: string }[] = [
+  { tone: 'timestamp', label: 'زمان' },
+  { tone: 'sequence', label: 'توالی' },
+  { tone: 'checksum', label: 'چک‌سام' },
+  { tone: 'state', label: 'وضعیت' },
+  { tone: 'text', label: 'متن' },
+  { tone: 'data', label: 'داده' },
+]
 
 export function PacketByteMap({ generation, schema, decodedFields }: PacketByteMapProps) {
   const [selectedFieldId, setSelectedFieldId] = useState(schema.fields[0]?.id ?? '')
@@ -39,8 +50,8 @@ export function PacketByteMap({ generation, schema, decodedFields }: PacketByteM
     <section className="simulator-card byte-inspector" aria-labelledby="byte-inspector-title">
       <header className="simulator-card__header simulator-card__header--dark">
         <div>
-          <span className="simulator-kicker">رکوردهای PayloadField</span>
-          <h2 id="byte-inspector-title">بازرس schema پایگاه داده</h2>
+          <span className="simulator-kicker">بازرس بایت‌ها</span>
+          <h2 id="byte-inspector-title">نقشهٔ بایت‌های payload</h2>
           <p>
             <code dir="ltr">{schema.eventType.code}/{schema.deviceType.code}/v{schema.version}</code>
             {' · '}{bytes.length.toLocaleString('fa-IR')} بایت UTF-8
@@ -61,11 +72,20 @@ export function PacketByteMap({ generation, schema, decodedFields }: PacketByteM
                 key={`${index}-${byte}`}
                 title={`${field?.name ?? 'خارج از فیلدها'} · offset ${index}`}
               >
-                <small>{index.toString().padStart(2, '0')}</small>
+                <small>{index % 4 === 0 ? index.toString().padStart(2, '0') : ''}</small>
                 <b>{byte}</b>
               </span>
             )
           })}
+        </div>
+
+        <div className="byte-legend" aria-label="راهنمای رنگ نقشهٔ بایت‌ها">
+          {toneLegend.map((item) => (
+            <span key={item.tone}>
+              <i className={`byte-legend__swatch byte-legend__swatch--${item.tone}`} />
+              {item.label}
+            </span>
+          ))}
         </div>
 
         <div className="segment-selector" aria-label="فیلدهای schema">

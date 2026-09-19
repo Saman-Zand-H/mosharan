@@ -2,13 +2,11 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
   Database,
   FlaskConical,
-  RadioTower,
   RefreshCw,
   TriangleAlert,
 } from 'lucide-react'
 
 import { DecodedPacketPanel } from '../features/packet-simulator/DecodedPacketPanel'
-import { IngestionPipeline } from '../features/packet-simulator/IngestionPipeline'
 import { PacketByteMap } from '../features/packet-simulator/PacketByteMap'
 import { PacketComposer } from '../features/packet-simulator/PacketComposer'
 import { parsePayload } from '../features/packet-simulator/packetProtocol'
@@ -25,12 +23,11 @@ import {
   type CatalogPayloadSchema,
   type SimulatorCatalog,
 } from '../features/packet-simulator/schemaCatalog'
-import { SchemaSourceNotice } from '../features/packet-simulator/SchemaSourceNotice'
-import { SessionStats } from '../features/packet-simulator/SessionStats'
 import { SimulationHistory } from '../features/packet-simulator/SimulationHistory'
 import type {
   SimulationPhase,
   SimulationReceipt,
+  SimulationRunResult,
 } from '../features/packet-simulator/simulatorTypes'
 
 const pause = (milliseconds: number) =>
@@ -51,15 +48,16 @@ export function PacketSimulatorPage() {
   const [drafts, setDrafts] = useState<FieldDrafts>({})
   const [gapByte, setGapByte] = useState<GapByte>(0x20)
   const [phase, setPhase] = useState<SimulationPhase>('idle')
-  const [failureMessage, setFailureMessage] = useState<string>()
   const [receipts, setReceipts] = useState<SimulationReceipt[]>([])
   const [activeReceipt, setActiveReceipt] = useState<SimulationReceipt>()
+  const [runResult, setRunResult] = useState<SimulationRunResult>()
   const [busy, setBusy] = useState(false)
   const [streaming, setStreaming] = useState(false)
   const [catalogLoadAttempt, setCatalogLoadAttempt] = useState(0)
   const busyRef = useRef(false)
   const runRef = useRef(0)
   const sequenceRef = useRef(0)
+  const resultsRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     const controller = new AbortController()
@@ -124,23 +122,22 @@ export function PacketSimulatorPage() {
     schema: CatalogPayloadSchema,
     device: CatalogDevice,
     payload: string,
+    options?: { scroll?: boolean },
   ) => {
     if (busyRef.current) return
     busyRef.current = true
     setBusy(true)
     const run = ++runRef.current
-    const startedAt = performance.now()
     const parsed = parsePayload(schema, payload)
 
-    setFailureMessage(undefined)
     setPhase('receiving')
-    await pause(170)
+    await pause(80)
     if (run !== runRef.current) return
     setPhase('stored')
-    await pause(190)
+    await pause(80)
     if (run !== runRef.current) return
     setPhase('parsing')
-    await pause(230)
+    await pause(80)
     if (run !== runRef.current) return
 
     const sequence = ++sequenceRef.current
@@ -172,33 +169,47 @@ export function PacketSimulatorPage() {
         ...baseReceipt,
         status: 'failed',
         error: parsed.error,
-        latencyMs: Math.round(performance.now() - startedAt),
       }
-      setFailureMessage(parsed.error)
+      setRunResult({ status: 'failed', error: parsed.error })
       setPhase('failed')
       setActiveReceipt(receipt)
       setReceipts((current) => [receipt, ...current].slice(0, 8))
       busyRef.current = false
       setBusy(false)
+      if (options?.scroll) {
+        window.setTimeout(
+          () => resultsRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' }),
+          60,
+        )
+      }
       return
     }
 
     setPhase('projecting')
-    await pause(240)
+    await pause(80)
     if (run !== runRef.current) return
     const receipt: SimulationReceipt = {
       ...baseReceipt,
       status: 'processed',
-      latencyMs: Math.round(performance.now() - startedAt),
       fields: parsed.parsed.fields,
       readings: parsed.parsed.readings,
       deviceTimestamp: parsed.parsed.deviceTimestamp,
     }
+    setRunResult({
+      status: 'processed',
+      readingCount: parsed.parsed.readings.length,
+    })
     setPhase('processed')
     setActiveReceipt(receipt)
     setReceipts((current) => [receipt, ...current].slice(0, 8))
     busyRef.current = false
     setBusy(false)
+    if (options?.scroll) {
+      window.setTimeout(
+        () => resultsRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' }),
+        60,
+      )
+    }
   }, [])
 
   useEffect(() => {
@@ -230,7 +241,7 @@ export function PacketSimulatorPage() {
     setDeviceId(device?.id ?? '')
     setDrafts(createFieldDrafts(schema))
     setPhase('idle')
-    setFailureMessage(undefined)
+    setRunResult(undefined)
   }
   const clearSession = () => {
     setStreaming(false)
@@ -238,7 +249,7 @@ export function PacketSimulatorPage() {
     busyRef.current = false
     setBusy(false)
     setPhase('idle')
-    setFailureMessage(undefined)
+    setRunResult(undefined)
     setReceipts([])
     setActiveReceipt(undefined)
     sequenceRef.current = 0
@@ -261,7 +272,11 @@ export function PacketSimulatorPage() {
     }
     setDeviceId(device?.id ?? '')
     setActiveReceipt(receipt)
-    setFailureMessage(receipt.error)
+    setRunResult(
+      receipt.status === 'processed'
+        ? { status: 'processed', readingCount: receipt.readings?.length }
+        : { status: 'failed', error: receipt.error },
+    )
     setPhase(receipt.status === 'processed' ? 'processed' : 'failed')
   }
 
@@ -300,43 +315,28 @@ export function PacketSimulatorPage() {
             <span className="eyebrow">آزمایشگاه پروتکل</span>
             <span className="demo-label"><FlaskConical size={13} aria-hidden="true" />شبیه‌سازی محلی</span>
           </div>
-          <h1>مولد و شبیه‌ساز payload</h1>
-          <p>برای هر schema پایگاه داده، فیلدها را پر کنید و payload دقیق UTF-8 بسازید.</p>
+          <h1>شبیه‌ساز دریافت</h1>
+          <p>
+            فیلدهای schema را پر کنید، payload دقیق UTF-8 بسازید و دریافت آن را در چهار گام پردازش
+            آزمایش کنید. همه‌چیز در مرورگر اجرا می‌شود و چیزی در پایگاه داده ثبت نمی‌شود.
+          </p>
         </div>
-        <span className="simulator-source"><Database size={16} aria-hidden="true" />منبع: API پایگاه داده</span>
       </header>
-
-      <SchemaSourceNotice />
-      <SessionStats receipts={receipts} streaming={streaming} />
-
-      <section className="simulator-device-selector" aria-labelledby="simulator-device-title">
-        <span><RadioTower size={17} aria-hidden="true" /></span>
-        <div><strong id="simulator-device-title">envelope دستگاه</strong><small>فقط دستگاه‌ها و درگاه‌های فعال با Device Type همین schema نشان داده می‌شوند.</small></div>
-        <select
-          aria-label="دستگاه دریافت‌کننده"
-          value={deviceId}
-          disabled={busy || streaming || !compatibleDevices.length}
-          onChange={(event) => setDeviceId(event.target.value)}
-        >
-          {!compatibleDevices.length ? <option value="">دستگاه سازگار وجود ندارد</option> : null}
-          {compatibleDevices.map((device) => (
-            <option key={device.id} value={device.id}>
-              {device.gateway.title} · {device.localId}
-            </option>
-          ))}
-        </select>
-      </section>
 
       <div className="simulator-workbench">
         <PacketComposer
           schemas={catalog.schemas}
           schemaId={schemaId}
+          devices={compatibleDevices}
+          deviceId={deviceId}
           drafts={drafts}
           generation={generation}
           gapByte={gapByte}
           busy={busy}
           streaming={streaming}
           canReceive={Boolean(selectedDevice)}
+          runResult={runResult}
+          onDeviceChange={setDeviceId}
           onDraftChange={(fieldId, value) => setDrafts((current) => ({ ...current, [fieldId]: value }))}
           onFillTimestamp={(fieldId) => {
             const current = createCurrentTimestampDraft(selectedSchema, fieldId)
@@ -345,7 +345,9 @@ export function PacketSimulatorPage() {
           onGapByteChange={setGapByte}
           onReceive={() => {
             if (generation.ok && selectedDevice) {
-              void simulateReceive(selectedSchema, selectedDevice, generation.payload)
+              void simulateReceive(selectedSchema, selectedDevice, generation.payload, {
+                scroll: true,
+              })
             }
           }}
           onReset={() => setDrafts(createFieldDrafts(selectedSchema))}
@@ -360,15 +362,8 @@ export function PacketSimulatorPage() {
         />
       </div>
 
-      {!selectedDevice ? (
-        <p className="simulator-device-warning" role="status">
-          payload تولید می‌شود، اما برای اجرای دریافت باید یک Device سازگار با schema ثبت و قابل دسترس باشد.
-        </p>
-      ) : null}
-      <IngestionPipeline phase={phase} failureMessage={failureMessage} />
-
-      <div className="simulator-results">
-        <DecodedPacketPanel receipt={activeReceipt} />
+      <div className="simulator-results" ref={resultsRef}>
+        <DecodedPacketPanel phase={phase} receipt={activeReceipt} />
         <SimulationHistory
           activeReceiptId={activeReceipt?.id}
           selectionDisabled={busy || streaming}
