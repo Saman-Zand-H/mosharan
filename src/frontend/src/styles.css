@@ -672,6 +672,7 @@ pre {
 
 .chart-labels {
   display: flex;
+  direction: ltr;
   padding-inline: 4.7% 2.2%;
   margin-block-start: 0.2rem;
   color: var(--muted-light);
@@ -682,6 +683,34 @@ pre {
 .chart-labels span {
   min-width: 0;
   text-align: center;
+}
+
+.chart-canvas {
+  position: relative;
+}
+
+.chart-y-axis {
+  position: absolute;
+  inset: 0;
+  direction: ltr;
+  pointer-events: none;
+}
+
+.chart-y-axis span {
+  position: absolute;
+  left: 0;
+  width: 5%;
+  transform: translateY(-50%);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--muted-light);
+  font-size: 0.55rem;
+  text-align: right;
+}
+
+.event-chart .chart-y-axis span {
+  width: 4.2%;
 }
 
 .health-indicator {
@@ -2372,6 +2401,7 @@ pre {
 
 .dashboard-chart__labels {
   display: flex;
+  direction: ltr;
   padding-inline: 2.8rem 0.65rem;
   color: var(--muted-light);
   font-size: 0.57rem;
@@ -2671,6 +2701,7 @@ pre {
 
 .binary-chart__labels {
   display: flex;
+  direction: ltr;
   padding-inline-start: 4.05rem;
   color: var(--muted-light);
   font-size: 0.52rem;
