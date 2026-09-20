@@ -1,6 +1,7 @@
 import { BarChart3, LineChart, TriangleAlert } from 'lucide-react'
 
 import { Panel } from '../../components/shared/Panel'
+import { computeTicks } from '../../lib/chartTicks'
 import type { DashboardVisualization } from './dashboardApi'
 
 const width = 760
@@ -44,11 +45,14 @@ export function DashboardChart({ visualization }: { visualization: DashboardVisu
   const maxWithPadding = maxValue + span * 0.08
   const minWithPadding = minValue - span * 0.08
   const paddedSpan = maxWithPadding - minWithPadding || 1
+  const ticks = computeTicks(minWithPadding, maxWithPadding)
+  const yFor = (value: number) =>
+    bottom - ((value - minWithPadding) / paddedSpan) * (bottom - top)
   const step = (right - left) / Math.max(points.length - 1, 1)
   const plotted = points.map((point, index) => ({
     ...point,
     xPosition: left + index * step,
-    yPosition: bottom - ((point.y - minWithPadding) / paddedSpan) * (bottom - top),
+    yPosition: yFor(point.y),
   }))
   const linePath = plotted
     .map((point, index) => `${index === 0 ? 'M' : 'L'} ${point.xPosition} ${point.yPosition}`)
@@ -63,52 +67,68 @@ export function DashboardChart({ visualization }: { visualization: DashboardVisu
       action={<span className="dashboard-axis-label">{visualization.yAxis.unit ?? visualization.yAxis.code}</span>}
     >
       <div className="dashboard-chart" aria-label={`نمودار ${visualization.title}`}>
-        <svg
-          className="dashboard-chart__plot"
-          role="img"
-          aria-labelledby={titleId}
-          viewBox={`0 0 ${width} ${height}`}
-          preserveAspectRatio="none"
-        >
-          <title id={titleId}>{visualization.title}</title>
-          {[top, top + 59, top + 118, bottom].map((y) => (
-            <line key={y} className="dashboard-chart__gridline" x1={left} x2={right} y1={y} y2={y} />
-          ))}
-          {visualization.chartType === 'area' ? <path className="dashboard-chart__area" d={areaPath} /> : null}
-          {visualization.chartType === 'bar'
-            ? plotted.map((point, index) => {
-                const barWidth = Math.max(8, Math.min(34, step * 0.58))
-                const zeroY =
-                  minWithPadding >= 0
-                    ? bottom
-                    : maxWithPadding <= 0
-                      ? top
-                      : bottom - ((0 - minWithPadding) / paddedSpan) * (bottom - top)
-                const yStart = point.y >= 0 ? point.yPosition : zeroY
-                const barHeight = Math.max(2, Math.abs(zeroY - point.yPosition))
-                return (
-                  <rect
-                    key={`${point.observedAt}-${index}`}
-                    className="dashboard-chart__bar"
-                    x={point.xPosition - barWidth / 2}
-                    y={yStart}
-                    width={barWidth}
-                    height={barHeight}
-                    rx="3"
-                  />
-                )
-              })
-            : <path className="dashboard-chart__line" d={linePath} />}
-          {plotted.map((point, index) => (
-            <circle
-              key={`${point.observedAt}-${index}`}
-              className="dashboard-chart__point"
-              cx={point.xPosition}
-              cy={point.yPosition}
-              r="4"
-            />
-          ))}
-        </svg>
+        <div className="chart-canvas">
+          <svg
+            className="dashboard-chart__plot"
+            role="img"
+            aria-labelledby={titleId}
+            viewBox={`0 0 ${width} ${height}`}
+            preserveAspectRatio="none"
+          >
+            <title id={titleId}>{visualization.title}</title>
+            {ticks.map((tick) => (
+              <line
+                key={tick}
+                className="dashboard-chart__gridline"
+                x1={left}
+                x2={right}
+                y1={yFor(tick)}
+                y2={yFor(tick)}
+              />
+            ))}
+            {visualization.chartType === 'area' ? <path className="dashboard-chart__area" d={areaPath} /> : null}
+            {visualization.chartType === 'bar'
+              ? plotted.map((point, index) => {
+                  const barWidth = Math.max(8, Math.min(34, step * 0.58))
+                  const zeroY =
+                    minWithPadding >= 0
+                      ? bottom
+                      : maxWithPadding <= 0
+                        ? top
+                        : yFor(0)
+                  const yStart = point.y >= 0 ? point.yPosition : zeroY
+                  const barHeight = Math.max(2, Math.abs(zeroY - point.yPosition))
+                  return (
+                    <rect
+                      key={`${point.observedAt}-${index}`}
+                      className="dashboard-chart__bar"
+                      x={point.xPosition - barWidth / 2}
+                      y={yStart}
+                      width={barWidth}
+                      height={barHeight}
+                      rx="3"
+                    />
+                  )
+                })
+              : <path className="dashboard-chart__line" d={linePath} />}
+            {plotted.map((point, index) => (
+              <circle
+                key={`${point.observedAt}-${index}`}
+                className="dashboard-chart__point"
+                cx={point.xPosition}
+                cy={point.yPosition}
+                r="4"
+              />
+            ))}
+          </svg>
+          <div className="chart-y-axis" aria-hidden="true">
+            {ticks.map((tick) => (
+              <span key={tick} style={{ top: `${(yFor(tick) / height) * 100}%` }}>
+                {formatNumber(tick)}
+              </span>
+            ))}
+          </div>
+        </div>
         <div className="dashboard-chart__labels" aria-hidden="true">
           {plotted.map((point, index) => (
             <span key={`${point.observedAt}-${index}`}>{formatX(point.x, point.observedAt, visualization.xAxis)}</span>
