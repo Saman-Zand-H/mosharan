@@ -154,7 +154,7 @@ export function PacketSimulatorPage() {
         deviceLocalId: device.localId,
         eventTypeCode: schema.eventType.code,
         schemaVersion: schema.version,
-        messageId: `demo-${Date.now()}-${sequence}`,
+        messageId: `${Date.now().toString(36)}-${sequence.toString(36)}`,
       },
       receivedAt: receivedAtFormatter.format(new Date()),
       byteLength: payloadBytes.length,
