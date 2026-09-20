@@ -64,8 +64,8 @@ POST /api/v1/management/gateways/{id}/ingest-token
 ```
 
 In the UI this is **Platform management → Gateways → issue token**. Each call
-generates a new `secrets.token_urlsafe(32)` value, stores only its hash, and
-returns the plaintext exactly once:
+generates a new 16-character `secrets.token_urlsafe(12)` value, stores only its
+hash, and returns the plaintext exactly once:
 
 ```json
 {

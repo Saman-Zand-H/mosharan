@@ -110,7 +110,7 @@ def rotate_gateway_ingest_token(*, pk: int) -> tuple[Gateway, str]:
         Gateway.objects.select_for_update(),
         pk=pk,
     )
-    token = secrets.token_urlsafe(32)
+    token = secrets.token_urlsafe(12)
     gateway.set_ingest_token(token)
     gateway = save_validated(gateway, update_fields=("ingest_token_hash",))
     return gateway, token
