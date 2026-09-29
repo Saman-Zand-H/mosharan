@@ -108,6 +108,52 @@ trusts it and enables secure cookies and HTTPS redirects. Do not expose either
 container port directly to the public network. TLS certificates and their
 renewal remain managed by the host; InvenTree's virtual host is independent.
 
+## TLS for RSA-only IoT modems (SIMCom R800C)
+
+The gateways upload over HTTPS with SIMCom R800C modems, whose TLS stack only
+offers RSA ciphers (e.g. `ECDHE-RSA-AES256-SHA`). A single ECDSA certificate
+plus certbot's AEAD-only Mozilla intermediate cipher list makes those clients
+fail with SSL alert 40 (`handshake_failure`), so the `app.mosharanco.com`
+virtual host serves **both** certificate types and keeps the TLS 1.2 CBC
+suites available:
+
+```bash
+# Second lineage, RSA; the existing ECDSA lineage is untouched.
+certbot certonly --nginx -d app.mosharanco.com \
+  --cert-name app.mosharanco.com-rsa --key-type rsa
+```
+
+In `/etc/nginx/sites-available/mosharanco.conf` (app server block only, after
+the certbot-managed lines): list both `ssl_certificate` pairs — nginx picks
+the key type each client supports — and, **instead of** the
+`include /etc/letsencrypt/options-ssl-nginx.conf;` line (it sets
+`ssl_ciphers` and cannot be overridden in the same block), inline its
+settings with the CBC suites appended:
+
+```nginx
+ssl_certificate /etc/letsencrypt/live/app.mosharanco.com-rsa/fullchain.pem;
+ssl_certificate_key /etc/letsencrypt/live/app.mosharanco.com-rsa/privkey.pem;
+ssl_session_cache shared:le_nginx_SSL:10m;
+ssl_session_timeout 1440m;
+ssl_session_tickets off;
+ssl_protocols TLSv1.2 TLSv1.3;
+ssl_prefer_server_ciphers off;
+ssl_ciphers "ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-RSA-AES128-GCM-SHA256:ECDHE-ECDSA-AES256-GCM-SHA384:ECDHE-RSA-AES256-GCM-SHA384:ECDHE-ECDSA-CHACHA20-POLY1305:ECDHE-RSA-CHACHA20-POLY1305:DHE-RSA-AES128-GCM-SHA256:DHE-RSA-AES256-GCM-SHA384:ECDHE-RSA-AES256-SHA:ECDHE-RSA-AES128-SHA:AES256-SHA:AES128-SHA";
+```
+
+`/etc/letsencrypt/renewal-hooks/deploy/reload-nginx.sh` (`systemctl reload
+nginx`) reloads the host after either lineage renews. Modern clients still
+negotiate ECDSA + AEAD; the legacy suites sit at the end of the list and only
+RSA-only clients select them. Verify after changes:
+
+```bash
+openssl s_client -connect app.mosharanco.com:443 -servername app.mosharanco.com \
+  -tls1_2 -cipher ECDHE-RSA-AES256-SHA </dev/null | grep 'Cipher is\|public key'
+```
+
+Plain HTTP stays redirected to HTTPS on port 80: the ingest bearer token must
+never cross the network in cleartext (see `src/backend/docs/ingest-api.md`).
+
 ## Migrating the original systemd installation
 
 Build first while the old services are running. Back up the host Nginx config
