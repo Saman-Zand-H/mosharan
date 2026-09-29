@@ -221,6 +221,35 @@ Devices should derive `messageId` from a monotonic source, such as
 `{deviceLocalId}-{sequence}` or `{deviceLocalId}-{unixTime}`, so replays after
 reconnects stay identical while new events never collide.
 
+### Generating IDs on constrained devices (no battery, no RTC, no flash writes)
+
+Microcontrollers without a battery-backed clock cannot keep a counter or a
+timestamp unique across power cycles, and writing every message ID to flash
+wears it out. The pattern that needs **no persistence at all**:
+
+1. Once per boot, draw a random *boot ID* — 8 bytes is ample (64 bits).
+2. Keep the message counter in **RAM** only, starting at 0 each boot.
+3. `messageId = {bootId}-{counter}`, e.g. `9f3c07d1a2be44f0-17`.
+
+Uniqueness across reboots comes from the boot ID randomness; within a boot,
+from the counter. Nothing is ever written to flash or kept alive by a battery.
+
+Entropy sources, best first: the STM32 hardware RNG peripheral (present on
+F4/L4/G4/H7/U5 and others); the factory 96-bit device UID (unique per chip,
+address is family-specific — see the reference manual) mixed with ADC noise or
+timer-jitter samples when no RNG peripheral exists. A 64-bit random boot ID
+collides with a previous boot with probability ≈ B²/2⁶⁴ (B = number of boots) —
+negligible for any fleet.
+
+If a collision ever does happen, the server answers `409 idempotency_conflict`;
+the device should treat that as "draw a new boot ID and resend once". The
+uniqueness check rides the existing `(gateway, message_id)` database index, so
+it stays cheap no matter how many events accumulate. For the same reason,
+`messageId` must stay in the request: it is what makes a retry after a GPRS
+dropout safe (the server returns the original `readingIds` instead of doubling
+the data). A server-assigned ID cannot deduplicate a client retry, so the field
+is not optional.
+
 ## Worked example
 
 Against the demo data created by `seed_demo_data` (gateway `DEMO-GW-001`,
