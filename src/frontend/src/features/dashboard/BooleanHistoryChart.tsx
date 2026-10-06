@@ -1,3 +1,5 @@
+import { useState } from 'react'
+
 import type { DashboardBinaryParameter } from './dashboardApi'
 
 const width = 760
@@ -12,12 +14,18 @@ const chartDateFormatter = new Intl.DateTimeFormat('fa-IR', {
   timeStyle: 'short',
 })
 
+const tooltipDateFormatter = new Intl.DateTimeFormat('fa-IR', {
+  dateStyle: 'short',
+  timeStyle: 'medium',
+})
+
 export function BooleanHistoryChart({
   item,
 }: {
   item: DashboardBinaryParameter
 }) {
   const points = item.history
+  const [hovered, setHovered] = useState<number | null>(null)
   const titleId = `boolean-chart-${item.parameter.id}-title`
   const descriptionId = `boolean-chart-${item.parameter.id}-description`
 
@@ -45,6 +53,7 @@ export function BooleanHistoryChart({
       return `L ${point.x} ${previous.y} L ${point.x} ${point.y}`
     })
     .join(' ')
+  const hoveredPoint = hovered !== null ? plotted[hovered] : null
 
   return (
     <div className="binary-chart-wrap">
@@ -61,6 +70,7 @@ export function BooleanHistoryChart({
           <span>۱ متصل</span>
           <span>۰ قطع</span>
         </div>
+        <div className="chart-canvas">
         <svg
           className="binary-chart__plot"
           role="img"
@@ -126,13 +136,38 @@ export function BooleanHistoryChart({
           {plotted.map((point, index) => (
             <circle
               key={`${point.observedAt}-point-${index}`}
-              className={`binary-chart__point binary-chart__point--${point.value ? 'connected' : 'disconnected'}`}
+              className={`binary-chart__point binary-chart__point--${point.value ? 'connected' : 'disconnected'}${hovered === index ? ' binary-chart__point--active' : ''}`}
               cx={point.x}
               cy={point.y}
-              r="3.5"
+              r={hovered === index ? 5 : 3.5}
+            />
+          ))}
+          {plotted.map((point, index) => (
+            <circle
+              key={`${point.observedAt}-hit-${index}`}
+              className="binary-chart__hit"
+              cx={point.x}
+              cy={point.y}
+              r={11}
+              onMouseEnter={() => setHovered(index)}
+              onMouseLeave={() => setHovered(null)}
             />
           ))}
         </svg>
+        {hoveredPoint ? (
+          <div
+            className="chart-tooltip"
+            role="status"
+            style={{
+              left: `${Math.min(88, Math.max(12, (hoveredPoint.x / width) * 100))}%`,
+              top: `${(hoveredPoint.y / height) * 100}%`,
+            }}
+          >
+            <b>{hoveredPoint.value ? '۱ · متصل' : '۰ · قطع'}</b>
+            <span>{formatTooltipDate(hoveredPoint.observedAt)}</span>
+          </div>
+        ) : null}
+        </div>
       </div>
       <div className="binary-chart__labels" aria-hidden="true">
         {labelIndexes.map((index) => (
@@ -149,4 +184,10 @@ function formatChartDate(value: string): string {
   const date = new Date(value)
   if (Number.isNaN(date.valueOf())) return value
   return chartDateFormatter.format(date)
+}
+
+function formatTooltipDate(value: string): string {
+  const date = new Date(value)
+  if (Number.isNaN(date.valueOf())) return value
+  return tooltipDateFormatter.format(date)
 }

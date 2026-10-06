@@ -2399,20 +2399,70 @@ pre {
   stroke-width: 2.5;
 }
 
-.dashboard-chart__labels {
+.dashboard-chart__point--active {
+  stroke-width: 3.5;
+}
+
+.dashboard-chart__hit {
+  fill: transparent;
+  stroke: none;
+}
+
+.dashboard-chart__guide {
+  stroke: var(--primary);
+  stroke-width: 1;
+  stroke-dasharray: 4 4;
+  opacity: 0.55;
+}
+
+.binary-chart__hit {
+  fill: transparent;
+  stroke: none;
+}
+
+.chart-tooltip {
+  position: absolute;
+  z-index: 4;
   display: flex;
+  direction: rtl;
+  padding: 0.34rem 0.55rem;
+  background: var(--sidebar);
+  color: #f3f7f5;
+  font-size: 0.6rem;
+  line-height: 1.45;
+  border-radius: 7px;
+  white-space: nowrap;
+  flex-direction: column;
+  box-shadow: 0 6px 18px rgb(14 27 23 / 22%);
+  pointer-events: none;
+  transform: translate(-50%, calc(-100% - 12px));
+}
+
+.chart-tooltip--below {
+  transform: translate(-50%, 14px);
+}
+
+.chart-tooltip b {
+  font-weight: 700;
+}
+
+.chart-tooltip span {
+  color: #c9d6d0;
+}
+
+.dashboard-chart__labels {
+  position: relative;
+  height: 1rem;
+  margin-block-start: 0.3rem;
   direction: ltr;
-  padding-inline: 2.8rem 0.65rem;
   color: var(--muted-light);
   font-size: 0.57rem;
-  justify-content: space-between;
-  gap: 0.3rem;
 }
 
 .dashboard-chart__labels span {
-  max-width: 5.5rem;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  position: absolute;
+  top: 0;
+  transform: translateX(-50%);
   white-space: nowrap;
 }
 
@@ -2724,6 +2774,7 @@ pre {
 
 .binary-history__row ol {
   display: flex;
+  direction: ltr;
   padding: 0.65rem 0 0;
   margin: 0;
   list-style: none;

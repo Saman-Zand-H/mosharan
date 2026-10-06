@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { BarChart3, LineChart, TriangleAlert } from 'lucide-react'
 
 import { Panel } from '../../components/shared/Panel'
@@ -17,8 +18,16 @@ const chartLabels: Record<DashboardVisualization['chartType'], string> = {
   bar: 'میله‌ای',
 }
 
+const tooltipDateFormatter = new Intl.DateTimeFormat('fa-IR', {
+  dateStyle: 'short',
+  timeStyle: 'medium',
+})
+
+const maxLabels = 6
+
 export function DashboardChart({ visualization }: { visualization: DashboardVisualization }) {
   const points = visualization.points
+  const [hovered, setHovered] = useState<number | null>(null)
   const Icon = visualization.chartType === 'bar' ? BarChart3 : LineChart
   const titleId = `dashboard-chart-${visualization.id}-title`
 
@@ -58,6 +67,8 @@ export function DashboardChart({ visualization }: { visualization: DashboardVisu
     .map((point, index) => `${index === 0 ? 'M' : 'L'} ${point.xPosition} ${point.yPosition}`)
     .join(' ')
   const areaPath = `${linePath} L ${plotted.at(-1)?.xPosition ?? right} ${bottom} L ${plotted[0]?.xPosition ?? left} ${bottom} Z`
+  const labelStep = Math.max(1, Math.ceil(plotted.length / maxLabels))
+  const hoveredPoint = hovered !== null ? plotted[hovered] : null
 
   return (
     <Panel
@@ -86,6 +97,15 @@ export function DashboardChart({ visualization }: { visualization: DashboardVisu
                 y2={yFor(tick)}
               />
             ))}
+            {hoveredPoint ? (
+              <line
+                className="dashboard-chart__guide"
+                x1={hoveredPoint.xPosition}
+                x2={hoveredPoint.xPosition}
+                y1={top}
+                y2={bottom}
+              />
+            ) : null}
             {visualization.chartType === 'area' ? <path className="dashboard-chart__area" d={areaPath} /> : null}
             {visualization.chartType === 'bar'
               ? plotted.map((point, index) => {
@@ -114,10 +134,21 @@ export function DashboardChart({ visualization }: { visualization: DashboardVisu
             {plotted.map((point, index) => (
               <circle
                 key={`${point.observedAt}-${index}`}
-                className="dashboard-chart__point"
+                className={`dashboard-chart__point${hovered === index ? ' dashboard-chart__point--active' : ''}`}
                 cx={point.xPosition}
                 cy={point.yPosition}
-                r="4"
+                r={hovered === index ? 5.5 : 4}
+              />
+            ))}
+            {plotted.map((point, index) => (
+              <circle
+                key={`${point.observedAt}-hit-${index}`}
+                className="dashboard-chart__hit"
+                cx={point.xPosition}
+                cy={point.yPosition}
+                r={12}
+                onMouseEnter={() => setHovered(index)}
+                onMouseLeave={() => setHovered(null)}
               />
             ))}
           </svg>
@@ -128,11 +159,28 @@ export function DashboardChart({ visualization }: { visualization: DashboardVisu
               </span>
             ))}
           </div>
+          {hoveredPoint ? (
+            <div
+              className={`chart-tooltip${hoveredPoint.yPosition < top + 70 ? ' chart-tooltip--below' : ''}`}
+              role="status"
+              style={{
+                left: `${clampPercent((hoveredPoint.xPosition / width) * 100)}%`,
+                top: `${(hoveredPoint.yPosition / height) * 100}%`,
+              }}
+            >
+              <b>{formatNumber(hoveredPoint.y)}{visualization.yAxis.unit ? ` ${visualization.yAxis.unit}` : ''}</b>
+              <span>{formatTooltipX(hoveredPoint, visualization.xAxis)}</span>
+            </div>
+          ) : null}
         </div>
         <div className="dashboard-chart__labels" aria-hidden="true">
-          {plotted.map((point, index) => (
-            <span key={`${point.observedAt}-${index}`}>{formatX(point.x, point.observedAt, visualization.xAxis)}</span>
-          ))}
+          {plotted.map((point, index) =>
+            index % labelStep === 0 || index === plotted.length - 1 ? (
+              <span key={`${point.observedAt}-${index}`} style={{ left: `${(point.xPosition / width) * 100}%` }}>
+                {formatX(point.x, point.observedAt, visualization.xAxis)}
+              </span>
+            ) : null,
+          )}
         </div>
       </div>
       <div className="dashboard-chart__summary">
@@ -143,6 +191,10 @@ export function DashboardChart({ visualization }: { visualization: DashboardVisu
       </div>
     </Panel>
   )
+}
+
+function clampPercent(value: number): number {
+  return Math.min(88, Math.max(12, value))
 }
 
 function axisLabel(axis: string): string {
@@ -158,6 +210,17 @@ function formatX(value: string, observedAt: string, axis: string): string {
     return new Intl.DateTimeFormat('fa-IR', { hour: '2-digit', minute: '2-digit' }).format(date)
   }
   return value.length > 12 ? `${value.slice(0, 12)}…` : value
+}
+
+function formatTooltipX(point: { x: string; observedAt: string }, axis: string): string {
+  if (axis !== 'observed_at') {
+    return point.x
+  }
+  const date = new Date(point.observedAt)
+  if (!Number.isNaN(date.valueOf())) {
+    return tooltipDateFormatter.format(date)
+  }
+  return point.x
 }
 
 function formatNumber(value: number): string {
